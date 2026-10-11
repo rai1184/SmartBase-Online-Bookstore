@@ -1,0 +1,16 @@
+{
+  "name": "SmartBase Dev Container",
+  "dockerComposeFile": "../docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/SmartBase-Online-Bookstore",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  },
+  "postCreateCommand": "sudo chmod +x scripts/dev-tasks.sh && echo 'alias devup=\"./scripts/dev-tasks.sh up\"' >> ~/.bashrc && echo 'alias devcheck=\"./scripts/dev-tasks.sh check\"' >> ~/.bashrc && echo 'alias devclean=\"./scripts/dev-tasks.sh clean\"' >> ~/.bashrc"
+}
