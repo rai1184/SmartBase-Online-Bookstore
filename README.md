@@ -43,9 +43,11 @@ From a Bash terminal in the repository root, run:
 devup
 ```
 
-This creates the backend virtual environment if needed, installs the backend
-Python packages, starts Flask, installs frontend packages if needed, and starts
-the Vite development server. Open:
+This creates the backend virtual environment if needed, installs backend Python
+packages only when they are missing, starts Flask, installs frontend packages
+if Vite is missing, and starts the Vite development server. The first run may
+take a few minutes while dependencies are downloaded; later starts skip those
+install steps. Open:
 
 - Frontend: <http://localhost:5173>
 - Backend health check: <http://localhost:5000/api/health>

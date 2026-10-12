@@ -7,28 +7,37 @@ COMMAND=$1
 case "$COMMAND" in
   up)
     echo "Starting SmartBase Development Environment..."
-    # 1. Install or update backend dependencies
+    # 1. Create the backend environment and install dependencies when missing
+    set -e
     cd backend
-    if [ ! -d "venv" ]; then
+    if [ ! -x "venv/bin/python" ]; then
         python3 -m venv venv
     fi
-    source venv/bin/activate
-    pip install -q Flask flask-cors mysql-connector-python
-    
-    # 2. Run backend in background
-    python3 app.py &
-    BACKEND_PID=$!
-    
-    # 3. Install or update frontend dependencies and start Vite with host flag
+    if ! venv/bin/python -m pip --version >/dev/null 2>&1; then
+        venv/bin/python -m ensurepip --upgrade
+    fi
+    if ! venv/bin/python -c "import flask, flask_cors, mysql.connector" >/dev/null 2>&1; then
+        echo "Installing backend dependencies..."
+        venv/bin/python -m pip install Flask flask-cors mysql-connector-python
+    fi
+
+    # 2. Install frontend dependencies before starting the backend
     cd ../frontend
-    if [ ! -d "node_modules" ]; then
+    if [ ! -x "node_modules/.bin/vite" ]; then
+        echo "Installing frontend dependencies..."
         npm install
     fi
+
+    # 3. Run backend in background and start Vite
+    cd ../backend
+    venv/bin/python app.py &
+    BACKEND_PID=$!
+    trap 'kill "$BACKEND_PID" 2>/dev/null || true' EXIT
+
+    cd ../frontend
     echo "Starting frontend dev server..."
     npm run dev -- --host
     
-    # Kill backend when frontend stops
-    kill $BACKEND_PID
     ;;
     
   check)
