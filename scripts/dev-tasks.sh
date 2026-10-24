@@ -30,7 +30,7 @@ case "$COMMAND" in
 
     # 3. Run backend in background and start Vite
     cd ../backend
-    venv/bin/python app.py &
+    venv/bin/python app/main.py &
     BACKEND_PID=$!
     trap 'kill "$BACKEND_PID" 2>/dev/null || true' EXIT
 
