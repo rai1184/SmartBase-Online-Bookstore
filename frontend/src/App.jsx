@@ -70,7 +70,7 @@ function App() {
     It does NOT write to or modify the backend/database.
   */
   useEffect(() => {
-    fetch("http://localhost:5000/api/health")
+    fetch("http://localhost:5001/api/health")
       .then((response) => {
         if (!response.ok) {
           throw new Error();
