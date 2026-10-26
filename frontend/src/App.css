@@ -704,6 +704,12 @@ button {
   color: #758699;
 }
 
+.book-description {
+  color: #61768b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .book-tags {
   display: flex;
 
