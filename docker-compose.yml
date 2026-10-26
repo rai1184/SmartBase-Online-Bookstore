@@ -5,19 +5,21 @@ services:
     build:
       context: .
       dockerfile: .devcontainer/Dockerfile
+    working_dir: /workspaces/SmartBase-Online-Bookstore
     volumes:
       - .:/workspaces/SmartBase-Online-Bookstore:cached
     command: sleep infinity
     ports:
-      - "5173:5173"  # React / Vite frontend
-      - "5000:5000"  # Flask backend
+      - "5174:5173"  # React / Vite frontend
+      - "5001:5000"  # Flask backend
     environment:
       - MYSQL_HOST=db
       - MYSQL_USER=root
       - MYSQL_PASSWORD=secret
       - MYSQL_DATABASE=smartbase_db
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
     image: mysql:8.0
@@ -30,6 +32,12 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql  # automatically populate db
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
 
 volumes:
   mysql_data:
