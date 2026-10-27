@@ -3,6 +3,7 @@
   "dockerComposeFile": "../docker-compose.yml",
   "service": "app",
   "workspaceFolder": "/workspaces/SmartBase-Online-Bookstore",
+  "shutdownAction": "stopCompose",
   "customizations": {
     "vscode": {
       "extensions": [

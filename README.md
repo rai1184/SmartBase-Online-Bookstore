@@ -37,26 +37,38 @@ client tools. The first build may take a few minutes.
 
 ### Run the app
 
-From a Bash terminal in the repository root, run:
+Open the project in its Compose dev container using **Dev Containers: Reopen in
+Container**. Do not separately run `docker compose up` from PowerShell first:
+that can create a second Compose project/container. Once the container is open,
+start the app from a Bash terminal at the repository root:
 
 ```bash
 devup
 ```
 
-This creates the backend virtual environment if needed, installs backend Python
-packages only when they are missing, starts Flask, installs frontend packages
-if Vite is missing, and starts the Vite development server. The first run may
-take a few minutes while dependencies are downloaded; later starts skip those
-install steps. Open:
+This creates the backend virtual environment if needed, installs missing
+backend and frontend packages, and starts Flask and Vite in the same Compose
+container that publishes their ports. Keep the terminal running while using
+the app. On an empty MySQL database, `devup` loads the schema and sample data
+from `init.sql`; it does not re-import seed data into an existing database.
+The first run may take a few minutes while dependencies are installed.
 
-- Frontend: <http://localhost:5173>
-- Backend health check: <http://localhost:5000/api/health>
+When Flask and Vite have started, open:
 
-Press `Ctrl+C` in the terminal to stop the Vite server. The helper script then
-stops the Flask process it started. The Compose-managed MySQL service remains
-running until you stop the Compose environment.
+- Frontend: <http://localhost:5174>
+- Backend health check: <http://localhost:5001/api/health>
+- Database connection check: <http://localhost:5001/api/health/database>
 
-If the aliases are not available, run the script directly:
+Compose waits for MySQL to pass its health check before starting the app
+container. The database check should then return the database status and book
+count.
+
+Press `Ctrl+C` in the terminal to stop Flask and Vite; MySQL remains available
+while the Dev Container is open. Closing the Dev Container stops its Compose
+services. The MySQL data volume is preserved.
+
+After reopening the dev container, run `devup` again to start Flask and Vite.
+If the alias is unavailable, run:
 
 ```bash
 bash scripts/dev-tasks.sh up
@@ -66,20 +78,14 @@ bash scripts/dev-tasks.sh up
 
 | Command | Description |
 | --- | --- |
-| `devup` | Install missing dependencies and start the Flask and Vite development servers. |
+| `devup` | Install missing dependencies and start Flask and Vite in the Compose app container. |
 | `devcheck` | Attempt backend unit-test discovery and run the frontend ESLint command. |
-| `devclean` | Remove Python caches, the frontend `node_modules` directory, and the backend virtual environment. Dependencies are installed again on the next `devup`. |
+| `devclean` | Remove Python caches, the frontend `node_modules` directory, and the backend virtual environment. Dependencies are installed again the next time the Compose `app` service starts. |
 
-The aliases are added to `~/.bashrc` when the Dev Container is created. The
-check script currently ignores failures from both checks, so `devcheck` may
-report completion even if a test or lint command fails.
-
-To stop the Docker Compose services when finished, run from the repository
-root:
-
-```bash
-docker compose down
-```
+The `devup`, `devcheck`, and `devclean` aliases are added to `~/.bashrc` when
+the Dev Container is created. The check script currently ignores failures from
+both checks, so `devcheck` may report completion even if a test or lint command
+fails.
 
 ## Project structure
 
@@ -100,5 +106,5 @@ docker compose down
 - **Development environment:** Docker Compose and VS Code Dev Containers
 
 The current app is intentionally a starter: the frontend displays sample books,
-and the Flask backend currently provides a health-check endpoint. MySQL is
-included in the development environment but is not yet used by the app.
+and the Flask backend provides health checks, including a database connection
+check against MySQL.
