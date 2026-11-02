@@ -87,10 +87,18 @@ export default function BookCard({
           by {book.Author}
         </p>
 
+        {book.About && (
+          <p className="book-description">
+            {book.About}
+          </p>
+        )}
+
         <div className="book-tags">
           <span>{book.Genre}</span>
-          <span>{book.Pages} pages</span>
-          <span>{book.PublicationYear}</span>
+          {book.Pages && <span>{book.Pages} pages</span>}
+          {book.PublicationYear && (
+            <span>{book.PublicationYear}</span>
+          )}
         </div>
 
         <div className="book-price-row">
@@ -99,7 +107,7 @@ export default function BookCard({
           </strong>
 
           <span>
-            ★ {book.Rating}
+            {book.Rating == null ? "Not rated" : `★ ${book.Rating}`}
           </span>
         </div>
 

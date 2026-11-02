@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -12,10 +13,40 @@ import BookSuggestions from "./components/BookSuggestions";
 import BookCard from "./components/BookCard";
 import FeaturedBooks from "./components/FeaturedBooks";
 
-import mockBooks from "./data/mockBooks";
+const API_BASE_URL = "http://localhost:5001/api";
+
+async function fetchBooksFromApi() {
+  const response = await fetch(`${API_BASE_URL}/books`);
+  if (!response.ok) {
+    throw new Error(`Could not load books (HTTP ${response.status}).`);
+  }
+
+  const data = await response.json();
+  if (!Array.isArray(data)) {
+    throw new Error("The books API returned an unexpected response.");
+  }
+
+  return data.map((book) => ({
+    ISBN: book.isbn,
+    Title: book.title,
+    Author: book.author,
+    Genre: book.genre || "Uncategorized",
+    MSRP: Number(book.msrp),
+    Rating: null,
+    Pages: null,
+    PublicationYear: book.publication_date
+      ? Number(book.publication_date.slice(0, 4))
+      : null,
+    About: book.about,
+  }));
+}
 
 function App() {
   const [page, setPage] = useState("home");
+
+  const [books, setBooks] = useState([]);
+  const [booksLoading, setBooksLoading] = useState(true);
+  const [booksError, setBooksError] = useState("");
 
   const [backendStatus, setBackendStatus] =
     useState("Checking...");
@@ -63,14 +94,43 @@ function App() {
         : {};
     });
 
-  /*
-    This only checks whether the existing Flask backend
-    is available.
+  const loadBooks = useCallback(() => {
+    setBooksLoading(true);
+    setBooksError("");
 
-    It does NOT write to or modify the backend/database.
-  */
+    fetchBooksFromApi()
+      .then(setBooks)
+      .catch((error) => setBooksError(error.message))
+      .finally(() => setBooksLoading(false));
+  }, []);
+
   useEffect(() => {
-    fetch("http://localhost:5001/api/health")
+    let active = true;
+
+    fetchBooksFromApi()
+      .then((loadedBooks) => {
+        if (active) {
+          setBooks(loadedBooks);
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setBooksError(error.message);
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setBooksLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/health`)
       .then((response) => {
         if (!response.ok) {
           throw new Error();
@@ -93,28 +153,19 @@ function App() {
   const genres = useMemo(() => {
     return [
       ...new Set(
-        mockBooks.map(
+        books.map(
           (book) => book.Genre
         )
       ),
     ];
-  }, []);
+  }, [books]);
 
-  /*
-    Temporary books displayed on the homepage.
-
-    Once your MySQL/Flask API is ready, these can
-    come from the backend instead.
-  */
   const featuredBooks =
-    mockBooks.slice(0, 4);
+    books.slice(0, 4);
 
   /*
-    TEMPORARY FRONTEND SEARCH LOGIC.
-
-    This exists only so you can develop and test
-    the UI before your team's real ConSQL backend
-    search endpoint is finished.
+    Search and alternative matching still run in the
+    frontend, using the records loaded from the API.
   */
   const handleSearch = (query) => {
     setHasSearched(true);
@@ -131,7 +182,7 @@ function App() {
         .toLowerCase();
 
     const exact =
-      mockBooks.filter((book) => {
+      books.filter((book) => {
         const titleMatch =
           !title ||
           book.Title
@@ -155,8 +206,8 @@ function App() {
 
         const ratingMatch =
           !query.minRating ||
-          book.Rating >=
-            Number(query.minRating);
+          (book.Rating != null &&
+            book.Rating >= Number(query.minRating));
 
         const yearMatch =
           !query.publicationYear ||
@@ -182,7 +233,7 @@ function App() {
     );
 
     const alternatives =
-      mockBooks
+      books
         .filter(
           (book) =>
             !exactISBNs.has(book.ISBN)
@@ -249,8 +300,8 @@ function App() {
 
           if (
             query.minRating &&
-            book.Rating <
-              Number(query.minRating)
+            (book.Rating == null ||
+              book.Rating < Number(query.minRating))
           ) {
             if (!query.relaxRating) {
               return null;
@@ -379,7 +430,7 @@ function App() {
   };
 
   const favoriteBooks =
-    mockBooks.filter((book) =>
+    books.filter((book) =>
       favorites.includes(book.ISBN)
     );
 
@@ -511,6 +562,9 @@ function App() {
 
           <FeaturedBooks
             books={featuredBooks}
+            loading={booksLoading}
+            error={booksError}
+            onRetry={loadBooks}
             favorites={favorites}
             toggleFavorite={
               toggleFavorite
@@ -612,27 +666,42 @@ function App() {
             </p>
           </div>
 
-          <SearchBox
-            onSearch={handleSearch}
-            genres={genres}
-          />
+          {booksLoading ? (
+            <p className="empty-message" role="status">
+              Loading books...
+            </p>
+          ) : booksError ? (
+            <div className="empty-message" role="alert">
+              <p>{booksError}</p>
+              <button className="standard-button" onClick={loadBooks}>
+                Try again
+              </button>
+            </div>
+          ) : (
+            <>
+              <SearchBox
+                onSearch={handleSearch}
+                genres={genres}
+              />
 
-          <BookSuggestions
-            hasSearched={hasSearched}
-            exactMatches={
-              exactMatches
-            }
-            alternativeMatches={
-              alternativeMatches
-            }
-            favorites={favorites}
-            toggleFavorite={
-              toggleFavorite
-            }
-            reviews={reviews}
-            addReview={addReview}
-            user={user}
-          />
+              <BookSuggestions
+                hasSearched={hasSearched}
+                exactMatches={
+                  exactMatches
+                }
+                alternativeMatches={
+                  alternativeMatches
+                }
+                favorites={favorites}
+                toggleFavorite={
+                  toggleFavorite
+                }
+                reviews={reviews}
+                addReview={addReview}
+                user={user}
+              />
+            </>
+          )}
         </main>
       )}
 
@@ -654,7 +723,18 @@ function App() {
             </p>
           </div>
 
-          {favoriteBooks.length ===
+          {booksLoading ? (
+            <p className="empty-message" role="status">
+              Loading books...
+            </p>
+          ) : booksError ? (
+            <div className="empty-message" role="alert">
+              <p>{booksError}</p>
+              <button className="standard-button" onClick={loadBooks}>
+                Try again
+              </button>
+            </div>
+          ) : favoriteBooks.length ===
           0 ? (
             <div className="empty-message">
               <h3>

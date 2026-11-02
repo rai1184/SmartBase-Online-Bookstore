@@ -105,6 +105,7 @@ fails.
 - **Database service:** MySQL 8
 - **Development environment:** Docker Compose and VS Code Dev Containers
 
-The current app is intentionally a starter: the frontend displays sample books,
-and the Flask backend provides health checks, including a database connection
-check against MySQL.
+The frontend loads books from `GET /api/books` and displays them in the existing
+book cards. The Flask backend also provides health checks, including a database
+connection check against MySQL. Ratings and page counts are not currently
+provided by the database.
