@@ -55,9 +55,6 @@ export default function Navbar({
         )}
       </nav>
 
-      <div className="backend-small">
-        Backend: {backendStatus}
-      </div>
     </header>
   );
 }

@@ -48,11 +48,6 @@ export default function BookCard({
             </span>
           )}
 
-          {type === "featured" && (
-            <span className="featured-badge">
-              Featured
-            </span>
-          )}
         </div>
 
         <button
@@ -74,12 +69,8 @@ export default function BookCard({
 
       <div className="book-cover-placeholder">
         <span>{book.Genre}</span>
-
-        <strong>
-          {book.Title.charAt(0)}
-        </strong>
       </div>
-
+      
       <div className="book-information">
         <h3>{book.Title}</h3>
 
