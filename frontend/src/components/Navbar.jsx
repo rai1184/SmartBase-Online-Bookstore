@@ -12,7 +12,7 @@ export default function Navbar({
         className="logo"
         onClick={() => setPage("home")}
       >
-        📚 SmartBase
+        SmartBase
       </button>
 
       <nav>

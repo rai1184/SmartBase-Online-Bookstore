@@ -616,7 +616,7 @@ function App() {
       <footer>
         <div>
           <strong>
-            📚 SmartBase
+            SmartBase
           </strong>
 
           <p>
