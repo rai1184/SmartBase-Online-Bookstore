@@ -163,191 +163,52 @@ function App() {
   const featuredBooks =
     books.slice(0, 4);
 
-  /*
-    Search and alternative matching still run in the
-    frontend, using the records loaded from the API.
-  */
-  const handleSearch = (query) => {
+  // Update state with searched for books
+  const handleSearch = async (query) => {
     setHasSearched(true);
     setPage("search");
 
-    const title =
-      query.title
-        .trim()
-        .toLowerCase();
-
-    const author =
-      query.author
-        .trim()
-        .toLowerCase();
-
-    const exact =
-      books.filter((book) => {
-        const titleMatch =
-          !title ||
-          book.Title
-            .toLowerCase()
-            .includes(title);
-
-        const authorMatch =
-          !author ||
-          book.Author
-            .toLowerCase()
-            .includes(author);
-
-        const genreMatch =
-          query.genre === "All" ||
-          book.Genre === query.genre;
-
-        const priceMatch =
-          !query.maxPrice ||
-          book.MSRP <=
-            Number(query.maxPrice);
-
-        const ratingMatch =
-          !query.minRating ||
-          (book.Rating != null &&
-            book.Rating >= Number(query.minRating));
-
-        const yearMatch =
-          !query.publicationYear ||
-          book.PublicationYear ===
-            Number(
-              query.publicationYear
-            );
-
-        return (
-          titleMatch &&
-          authorMatch &&
-          genreMatch &&
-          priceMatch &&
-          ratingMatch &&
-          yearMatch
-        );
+    try {
+      // Build the query parameters from what the user typed and selected
+      const params = new URLSearchParams({
+        title: query.title || "",
+        author: query.author || "",
+        genre: query.genre || "All",
       });
 
-    setExactMatches(exact);
+      // Fetch results from your Flask backend search endpoint
+      const response = await fetch(`${API_BASE_URL}/books/search?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch search results from the server.");
+      }
 
-    const exactISBNs = new Set(
-      exact.map((book) => book.ISBN)
-    );
+      // Data returned from query
+      const data = await response.json();
 
-    const alternatives =
-      books
-        .filter(
-          (book) =>
-            !exactISBNs.has(book.ISBN)
-        )
+      // Put data in correct format
+      const formatBook = (book) => ({
+        ISBN: book.isbn,
+        Title: book.title,
+        Author: book.author,
+        Genre: book.genre || "Uncategorized",
+        MSRP: Number(book.msrp),
+        Rating: null,
+        Pages: null,
+        PublicationYear: book.publication_date
+          ? Number(book.publication_date.slice(0, 4))
+          : null,
+        About: book.about,
+      });
 
-        .map((book) => {
-          let score = 1;
+      // Update state with the books
+      setExactMatches(data.exact_matches.map(formatBook));
+      setAlternativeMatches(data.alternative_matches.map(formatBook));
 
-          if (
-            title &&
-            !book.Title
-              .toLowerCase()
-              .includes(title)
-          ) {
-            if (!query.relaxTitle) {
-              return null;
-            }
-
-            score -= 0.2;
-          }
-
-          if (
-            author &&
-            !book.Author
-              .toLowerCase()
-              .includes(author)
-          ) {
-            if (!query.relaxAuthor) {
-              return null;
-            }
-
-            score -= 0.15;
-          }
-
-          if (
-            query.genre !== "All" &&
-            book.Genre !== query.genre
-          ) {
-            if (!query.relaxGenre) {
-              return null;
-            }
-
-            score -= 0.12;
-          }
-
-          if (
-            query.maxPrice &&
-            book.MSRP >
-              Number(query.maxPrice)
-          ) {
-            if (!query.relaxPrice) {
-              return null;
-            }
-
-            const difference =
-              book.MSRP -
-              Number(query.maxPrice);
-
-            score -= Math.min(
-              difference / 100,
-              0.2
-            );
-          }
-
-          if (
-            query.minRating &&
-            (book.Rating == null ||
-              book.Rating < Number(query.minRating))
-          ) {
-            if (!query.relaxRating) {
-              return null;
-            }
-
-            score -= 0.1;
-          }
-
-          if (
-            query.publicationYear &&
-            book.PublicationYear !==
-              Number(
-                query.publicationYear
-              )
-          ) {
-            if (!query.relaxYear) {
-              return null;
-            }
-
-            score -= 0.08;
-          }
-
-          return {
-            ...book,
-
-            similarityScore:
-              Math.max(
-                0.25,
-                Math.min(0.99, score)
-              ),
-          };
-        })
-
-        .filter(Boolean)
-
-        .sort(
-          (a, b) =>
-            b.similarityScore -
-            a.similarityScore
-        )
-
-        .slice(0, 4);
-
-    setAlternativeMatches(
-      alternatives
-    );
+    } catch (error) {
+      console.error("Search error:", error);
+      setExactMatches([]);
+      setAlternativeMatches([]);
+    }
   };
 
   const toggleFavorite = (isbn) => {

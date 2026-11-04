@@ -1,7 +1,7 @@
 from contextlib import closing
 
 import mysql.connector
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 
 from app.database.connection import get_db_connection
 
@@ -90,3 +90,74 @@ def database_health_check():
             "book_count": book_count,
         }
     )
+
+# The endpoint for searching. Returns a json object with both exact matches and alternatives
+@api_v1.get("/books/search")
+def search_books():
+    # Grab search parameters from the URL sent by React
+    title = request.args.get("title", "").strip()
+    author = request.args.get("author", "").strip()
+    genre = request.args.get("genre", "All").strip()
+
+    # Base SQL query structure
+    base_select = """
+        SELECT
+            Books.isbn,
+            Books.title,
+            Books.author,
+            Books.about,
+            Books.msrp,
+            Books.publication_date,
+            Genres.genre_name
+        FROM Books
+        LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
+    """
+
+    # --- QUERY 1: Exact / Filtered Matches ---
+    exact_query = base_select + " WHERE 1=1"
+    exact_params = []
+
+    # MySQL has a "LIKE" keyword we can use
+    if title:
+        exact_query += " AND Books.title LIKE %s"
+        exact_params.append(f"%{title}%")
+    if author:
+        exact_query += " AND Books.author LIKE %s"
+        exact_params.append(f"%{author}%")
+    if genre and genre != "All":
+        exact_query += " AND Genres.genre_name = %s"
+        exact_params.append(genre)
+
+    exact_query += " ORDER BY Books.title"
+
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor()) as cursor:
+                # Run the exact match query
+                cursor.execute(exact_query, tuple(exact_params))
+                exact_rows = cursor.fetchall() # all exact matches
+
+    except (mysql.connector.Error, RuntimeError):
+        current_app.logger.exception("Book search request failed")
+        return jsonify({"message": "Search unavailable"}), 503
+
+    # Convert rows into dictionaries
+    def format_rows(rows):
+        return [
+            {
+                "isbn": isbn,
+                "title": title,
+                "author": author,
+                "about": about,
+                "msrp": float(msrp) if msrp is not None else 0.0,
+                "publication_date": publication_date.isoformat() if publication_date else None,
+                "genre": genre_name,
+            }
+            for (isbn, title, author, about, msrp, publication_date, genre_name) in rows
+        ]
+
+    # Return both sets of results to React as JSON
+    return jsonify({
+        "exact_matches": format_rows(exact_rows),
+        "alternative_matches": [], 
+    })
