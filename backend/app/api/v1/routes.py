@@ -113,7 +113,7 @@ def search_books():
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
     """
 
-    # --- QUERY 1: Exact / Filtered Matches ---
+    # Building the exact match query
     exact_query = base_select + " WHERE 1=1"
     exact_params = []
 
