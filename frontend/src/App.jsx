@@ -1,10 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
 import "./App.css";
 
 import Navbar from "./components/Navbar";
@@ -12,34 +6,9 @@ import SearchBox from "./components/SearchBox";
 import BookSuggestions from "./components/BookSuggestions";
 import BookCard from "./components/BookCard";
 import FeaturedBooks from "./components/FeaturedBooks";
+import Login from "./components/Login";
 
-const API_BASE_URL = "http://localhost:5001/api";
-
-async function fetchBooksFromApi() {
-  const response = await fetch(`${API_BASE_URL}/books`);
-  if (!response.ok) {
-    throw new Error(`Could not load books (HTTP ${response.status}).`);
-  }
-
-  const data = await response.json();
-  if (!Array.isArray(data)) {
-    throw new Error("The books API returned an unexpected response.");
-  }
-
-  return data.map((book) => ({
-    ISBN: book.isbn,
-    Title: book.title,
-    Author: book.author,
-    Genre: book.genre || "Uncategorized",
-    MSRP: Number(book.msrp),
-    Rating: null,
-    Pages: null,
-    PublicationYear: book.publication_date
-      ? Number(book.publication_date.slice(0, 4))
-      : null,
-    About: book.about,
-  }));
-}
+import { fetchBooksFromApi, searchBooksApi, checkHealthApi } from "./services/api";
 
 function App() {
   const [page, setPage] = useState("home");
@@ -48,51 +17,25 @@ function App() {
   const [booksLoading, setBooksLoading] = useState(true);
   const [booksError, setBooksError] = useState("");
 
-  const [backendStatus, setBackendStatus] =
-    useState("Checking...");
-
-  const [hasSearched, setHasSearched] =
-    useState(false);
-
-  const [exactMatches, setExactMatches] =
-    useState([]);
-
-  const [
-    alternativeMatches,
-    setAlternativeMatches,
-  ] = useState([]);
+  const [backendStatus, setBackendStatus] = useState("Checking...");
+  const [hasSearched, setHasSearched] = useState(false);
+  const [exactMatches, setExactMatches] = useState([]);
+  const [alternativeMatches, setAlternativeMatches] = useState([]);
 
   const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem(
-      "smartbase-user"
-    );
-
-    return stored
-      ? JSON.parse(stored)
-      : null;
+    const stored = localStorage.getItem("smartbase-user");
+    return stored ? JSON.parse(stored) : null;
   });
 
-  const [favorites, setFavorites] =
-    useState(() => {
-      const stored = localStorage.getItem(
-        "smartbase-favorites"
-      );
+  const [favorites, setFavorites] = useState(() => {
+    const stored = localStorage.getItem("smartbase-favorites");
+    return stored ? JSON.parse(stored) : [];
+  });
 
-      return stored
-        ? JSON.parse(stored)
-        : [];
-    });
-
-  const [reviews, setReviews] =
-    useState(() => {
-      const stored = localStorage.getItem(
-        "smartbase-reviews"
-      );
-
-      return stored
-        ? JSON.parse(stored)
-        : {};
-    });
+  const [reviews, setReviews] = useState(() => {
+    const stored = localStorage.getItem("smartbase-reviews");
+    return stored ? JSON.parse(stored) : {};
+  });
 
   const loadBooks = useCallback(() => {
     setBooksLoading(true);
@@ -109,19 +52,13 @@ function App() {
 
     fetchBooksFromApi()
       .then((loadedBooks) => {
-        if (active) {
-          setBooks(loadedBooks);
-        }
+        if (active) setBooks(loadedBooks);
       })
       .catch((error) => {
-        if (active) {
-          setBooksError(error.message);
-        }
+        if (active) setBooksError(error.message);
       })
       .finally(() => {
-        if (active) {
-          setBooksLoading(false);
-        }
+        if (active) setBooksLoading(false);
       });
 
     return () => {
@@ -130,309 +67,92 @@ function App() {
   }, []);
 
   useEffect(() => {
-    fetch(`${API_BASE_URL}/health`)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error();
-        }
-
-        return response.json();
-      })
-
-      .then((data) => {
-        setBackendStatus(
-          data.message || "Online"
-        );
-      })
-
-      .catch(() => {
-        setBackendStatus("Offline");
-      });
+    checkHealthApi()
+      .then(setBackendStatus)
+      .catch(() => setBackendStatus("Offline"));
   }, []);
 
   const genres = useMemo(() => {
-    return [
-      ...new Set(
-        books.map(
-          (book) => book.Genre
-        )
-      ),
-    ];
+    return [...new Set(books.map((book) => book.Genre))];
   }, [books]);
 
-  const featuredBooks =
-    books.slice(0, 4);
+  const featuredBooks = books.slice(0, 4);
 
-  /*
-    Search and alternative matching still run in the
-    frontend, using the records loaded from the API.
-  */
-  const handleSearch = (query) => {
+  // Given query, which is a form, populate exact and alternative matches
+  const handleSearch = async (query) => {
     setHasSearched(true);
     setPage("search");
 
-    const title =
-      query.title
-        .trim()
-        .toLowerCase();
-
-    const author =
-      query.author
-        .trim()
-        .toLowerCase();
-
-    const exact =
-      books.filter((book) => {
-        const titleMatch =
-          !title ||
-          book.Title
-            .toLowerCase()
-            .includes(title);
-
-        const authorMatch =
-          !author ||
-          book.Author
-            .toLowerCase()
-            .includes(author);
-
-        const genreMatch =
-          query.genre === "All" ||
-          book.Genre === query.genre;
-
-        const priceMatch =
-          !query.maxPrice ||
-          book.MSRP <=
-            Number(query.maxPrice);
-
-        const ratingMatch =
-          !query.minRating ||
-          (book.Rating != null &&
-            book.Rating >= Number(query.minRating));
-
-        const yearMatch =
-          !query.publicationYear ||
-          book.PublicationYear ===
-            Number(
-              query.publicationYear
-            );
-
-        return (
-          titleMatch &&
-          authorMatch &&
-          genreMatch &&
-          priceMatch &&
-          ratingMatch &&
-          yearMatch
-        );
+    try {
+      // Pack all fields and relaxation flags into a URLSearchParams, to be sent to backend
+      const params = new URLSearchParams({
+        title: query.title || "",
+        author: query.author || "",
+        genre: query.genre || "All",
+        max_price: query.maxPrice || "",
+        min_rating: query.minRating || "",
+        publication_year: query.publicationYear || "",
+        relax_title: query.relaxTitle,
+        relax_author: query.relaxAuthor,
+        relax_genre: query.relaxGenre,
+        relax_price: query.relaxPrice,
+        relax_rating: query.relaxRating,
+        relax_year: query.relaxYear,
       });
 
-    setExactMatches(exact);
-
-    const exactISBNs = new Set(
-      exact.map((book) => book.ISBN)
-    );
-
-    const alternatives =
-      books
-        .filter(
-          (book) =>
-            !exactISBNs.has(book.ISBN)
-        )
-
-        .map((book) => {
-          let score = 1;
-
-          if (
-            title &&
-            !book.Title
-              .toLowerCase()
-              .includes(title)
-          ) {
-            if (!query.relaxTitle) {
-              return null;
-            }
-
-            score -= 0.2;
-          }
-
-          if (
-            author &&
-            !book.Author
-              .toLowerCase()
-              .includes(author)
-          ) {
-            if (!query.relaxAuthor) {
-              return null;
-            }
-
-            score -= 0.15;
-          }
-
-          if (
-            query.genre !== "All" &&
-            book.Genre !== query.genre
-          ) {
-            if (!query.relaxGenre) {
-              return null;
-            }
-
-            score -= 0.12;
-          }
-
-          if (
-            query.maxPrice &&
-            book.MSRP >
-              Number(query.maxPrice)
-          ) {
-            if (!query.relaxPrice) {
-              return null;
-            }
-
-            const difference =
-              book.MSRP -
-              Number(query.maxPrice);
-
-            score -= Math.min(
-              difference / 100,
-              0.2
-            );
-          }
-
-          if (
-            query.minRating &&
-            (book.Rating == null ||
-              book.Rating < Number(query.minRating))
-          ) {
-            if (!query.relaxRating) {
-              return null;
-            }
-
-            score -= 0.1;
-          }
-
-          if (
-            query.publicationYear &&
-            book.PublicationYear !==
-              Number(
-                query.publicationYear
-              )
-          ) {
-            if (!query.relaxYear) {
-              return null;
-            }
-
-            score -= 0.08;
-          }
-
-          return {
-            ...book,
-
-            similarityScore:
-              Math.max(
-                0.25,
-                Math.min(0.99, score)
-              ),
-          };
-        })
-
-        .filter(Boolean)
-
-        .sort(
-          (a, b) =>
-            b.similarityScore -
-            a.similarityScore
-        )
-
-        .slice(0, 4);
-
-    setAlternativeMatches(
-      alternatives
-    );
+      const results = await searchBooksApi(params);
+      setExactMatches(results.exact_matches); // set state
+      setAlternativeMatches(results.alternative_matches);
+    } catch (error) {
+      console.error("Search error:", error);
+      setExactMatches([]);
+      setAlternativeMatches([]);
+    }
   };
 
   const toggleFavorite = (isbn) => {
     setFavorites((current) => {
-      const updated =
-        current.includes(isbn)
-          ? current.filter(
-              (item) => item !== isbn
-            )
-          : [...current, isbn];
+      const updated = current.includes(isbn)
+        ? current.filter((item) => item !== isbn)
+        : [...current, isbn];
 
-      localStorage.setItem(
-        "smartbase-favorites",
-        JSON.stringify(updated)
-      );
-
+      localStorage.setItem("smartbase-favorites", JSON.stringify(updated));
       return updated;
     });
   };
 
-  const addReview = (
-    isbn,
-    score,
-    text
-  ) => {
+  const addReview = (isbn, score, text) => {
     if (!user) {
       setPage("login");
       return;
     }
 
     setReviews((current) => {
-      const newReview = {
-        name: user.name,
-        score,
-        text,
-      };
-
+      const newReview = { name: user.name, score, text };
       const updated = {
         ...current,
-
-        [isbn]: [
-          ...(current[isbn] || []),
-          newReview,
-        ],
+        [isbn]: [...(current[isbn] || []), newReview],
       };
 
-      localStorage.setItem(
-        "smartbase-reviews",
-        JSON.stringify(updated)
-      );
-
+      localStorage.setItem("smartbase-reviews", JSON.stringify(updated));
       return updated;
     });
   };
 
   const login = (name, email) => {
-    const account = {
-      name,
-      email,
-    };
-
+    const account = { name, email };
     setUser(account);
-
-    localStorage.setItem(
-      "smartbase-user",
-      JSON.stringify(account)
-    );
-
+    localStorage.setItem("smartbase-user", JSON.stringify(account));
     setPage("home");
   };
 
   const logout = () => {
     setUser(null);
-
-    localStorage.removeItem(
-      "smartbase-user"
-    );
-
+    localStorage.removeItem("smartbase-user");
     setPage("home");
   };
 
-  const favoriteBooks =
-    books.filter((book) =>
-      favorites.includes(book.ISBN)
-    );
+  const favoriteBooks = books.filter((book) => favorites.includes(book.ISBN));
 
   return (
     <div className="app-container">
@@ -441,15 +161,10 @@ function App() {
         setPage={setPage}
         user={user}
         logout={logout}
-        favoriteCount={
-          favorites.length
-        }
-        backendStatus={
-          backendStatus
-        }
+        favoriteCount={favorites.length}
+        backendStatus={backendStatus}
       />
 
-      {/* HOME */}
       {page === "home" && (
         <main>
           <FeaturedBooks
@@ -467,54 +182,30 @@ function App() {
         </main>
       )}
 
-      {/* SEARCH */}
       {page === "search" && (
         <main className="page">
           <div className="page-heading">
-            <p className="section-label">
-              SMART SEARCH
-            </p>
-
+            <p className="section-label">SMART SEARCH</p>
             <h1>Search Books</h1>
-
-            <p>
-              Enter the criteria you want
-              SmartBase to use and choose
-              which conditions may be
-              relaxed.
-            </p>
+            <p>Enter the criteria you want SmartBase to use.</p>
           </div>
 
           {booksLoading ? (
-            <p className="empty-message" role="status">
-              Loading books...
-            </p>
+            <p className="empty-message" role="status">Loading books...</p>
           ) : booksError ? (
             <div className="empty-message" role="alert">
               <p>{booksError}</p>
-              <button className="standard-button" onClick={loadBooks}>
-                Try again
-              </button>
+              <button className="standard-button" onClick={loadBooks}>Try again</button>
             </div>
           ) : (
             <>
-              <SearchBox
-                onSearch={handleSearch}
-                genres={genres}
-              />
-
+              <SearchBox onSearch={handleSearch} genres={genres} />
               <BookSuggestions
                 hasSearched={hasSearched}
-                exactMatches={
-                  exactMatches
-                }
-                alternativeMatches={
-                  alternativeMatches
-                }
+                exactMatches={exactMatches}
+                alternativeMatches={alternativeMatches}
                 favorites={favorites}
-                toggleFavorite={
-                  toggleFavorite
-                }
+                toggleFavorite={toggleFavorite}
                 reviews={reviews}
                 addReview={addReview}
                 user={user}
@@ -524,213 +215,59 @@ function App() {
         </main>
       )}
 
-      {/* FAVORITES */}
       {page === "favorites" && (
         <main className="page">
           <div className="page-heading">
-            <p className="section-label">
-              YOUR LIBRARY
-            </p>
-
-            <h1>
-              Favorite Books
-            </h1>
-
-            <p>
-              Books you save will appear
-              here.
-            </p>
+            <p className="section-label">YOUR LIBRARY</p>
+            <h1>Favorite Books</h1>
+            <p>Books you save will appear here.</p>
           </div>
 
           {booksLoading ? (
-            <p className="empty-message" role="status">
-              Loading books...
-            </p>
+            <p className="empty-message" role="status">Loading books...</p>
           ) : booksError ? (
             <div className="empty-message" role="alert">
               <p>{booksError}</p>
-              <button className="standard-button" onClick={loadBooks}>
-                Try again
-              </button>
+              <button className="standard-button" onClick={loadBooks}>Try again</button>
             </div>
-          ) : favoriteBooks.length ===
-          0 ? (
+          ) : favoriteBooks.length === 0 ? (
             <div className="empty-message">
-              <h3>
-                No favorites yet.
-              </h3>
-
-              <p>
-                Search or browse books and
-                click the heart to save
-                them.
-              </p>
-
-              <button
-                className="standard-button"
-                onClick={() =>
-                  setPage("search")
-                }
-              >
+              <h3>No favorites yet.</h3>
+              <p>Search or browse books and click the heart to save them.</p>
+              <button className="standard-button" onClick={() => setPage("search")}>
                 Browse Books
               </button>
             </div>
           ) : (
             <div className="book-grid">
-              {favoriteBooks.map(
-                (book) => (
-                  <BookCard
-                    key={book.ISBN}
-                    book={book}
-                    type="featured"
-                    favorite={true}
-                    toggleFavorite={
-                      toggleFavorite
-                    }
-                    reviews={
-                      reviews[
-                        book.ISBN
-                      ] || []
-                    }
-                    addReview={
-                      addReview
-                    }
-                    user={user}
-                  />
-                )
-              )}
+              {favoriteBooks.map((book) => (
+                <BookCard
+                  key={book.ISBN}
+                  book={book}
+                  type="featured"
+                  favorite={true}
+                  toggleFavorite={toggleFavorite}
+                  reviews={reviews[book.ISBN] || []}
+                  addReview={addReview}
+                  user={user}
+                />
+              ))}
             </div>
           )}
         </main>
       )}
 
-      {/* LOGIN */}
       {page === "login" && (
-        <Login
-          user={user}
-          login={login}
-          logout={logout}
-        />
+        <Login user={user} login={login} logout={logout} />
       )}
 
       <footer>
         <div>
-          <strong>
-            SmartBase
-          </strong>
-
-          <p>
-            Context-aware online bookstore
-            search.
-          </p>
+          <strong>SmartBase</strong>
+          <p>Context-aware online bookstore search.</p>
         </div>
-
       </footer>
     </div>
-  );
-}
-
-function Login({
-  user,
-  login,
-  logout,
-}) {
-  const [name, setName] =
-    useState("");
-
-  const [email, setEmail] =
-    useState("");
-
-  if (user) {
-    return (
-      <main className="login-page">
-        <div className="login-card">
-          <p className="section-label">
-            ACCOUNT
-          </p>
-
-          <h1>
-            Welcome, {user.name}
-          </h1>
-
-          <p>{user.email}</p>
-
-          <button onClick={logout}>
-            Logout
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  const submit = (event) => {
-    event.preventDefault();
-
-    if (
-      !name.trim() ||
-      !email.trim()
-    ) {
-      return;
-    }
-
-    login(
-      name.trim(),
-      email.trim()
-    );
-  };
-
-  return (
-    <main className="login-page">
-      <form
-        className="login-card"
-        onSubmit={submit}
-      >
-        <p className="section-label">
-          SMARTBASE ACCOUNT
-        </p>
-
-        <h1>Login</h1>
-
-        <p>
-          Sign in to manage favorites
-          and reviews.
-        </p>
-
-        <label>
-          Name
-
-          <input
-            type="text"
-            value={name}
-            onChange={(event) =>
-              setName(
-                event.target.value
-              )
-            }
-            placeholder="Your name"
-          />
-        </label>
-
-        <label>
-          Email
-
-          <input
-            type="email"
-            value={email}
-            onChange={(event) =>
-              setEmail(
-                event.target.value
-              )
-            }
-            placeholder="you@example.com"
-          />
-        </label>
-
-        <button type="submit">
-          Login
-        </button>
-      </form>
-    </main>
   );
 }
 
