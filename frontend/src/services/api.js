@@ -2,6 +2,7 @@ import { formatBook } from "../utils/formatters";
 
 const API_BASE_URL = "http://localhost:5001/api";
 
+// Returns all books from DB
 export async function fetchBooksFromApi() {
   const response = await fetch(`${API_BASE_URL}/books`);
   if (!response.ok) {
@@ -16,6 +17,7 @@ export async function fetchBooksFromApi() {
   return data.map(formatBook);
 }
 
+// Given parameters, return object storing exact matches and alternative matches
 export async function searchBooksApi(params) {
   const response = await fetch(`${API_BASE_URL}/books/search?${params.toString()}`);
   if (!response.ok) {

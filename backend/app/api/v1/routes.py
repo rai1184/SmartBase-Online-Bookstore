@@ -98,8 +98,13 @@ def search_books():
     title = request.args.get("title", "").strip()
     author = request.args.get("author", "").strip()
     genre = request.args.get("genre", "All").strip()
+    maxPrice = request.args.get("maxPrice", "").strip()
+    minRating = request.args.get("minRating", "").strip()
+    publicationYear = request.args.get("publicationYear", "").strip()
 
     # Base SQL query structure
+    # Join books with genres so we can get the genre name
+    # Join books with reviews so we can use the average function to get the avg review score
     base_select = """
         SELECT
             Books.isbn,
@@ -108,9 +113,11 @@ def search_books():
             Books.about,
             Books.msrp,
             Books.publication_date,
-            Genres.genre_name
+            Genres.genre_name,
+            AVG(Reviews.review_score) AS avg_rating
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
+        LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
     """
 
     # Building the exact match query
@@ -127,6 +134,29 @@ def search_books():
     if genre and genre != "All":
         exact_query += " AND Genres.genre_name = %s"
         exact_params.append(genre)
+    if maxPrice:
+        try:
+            exact_query += " AND Books.msrp <= %s"
+            exact_params.append(float(maxPrice))
+        except ValueError:
+            pass
+    if publicationYear:
+        try:
+            exact_query += " AND YEAR(Books.publication_date) = %s"
+            exact_params.append(int(publicationYear))
+        except ValueError:
+            pass
+
+    # Group by the unique book
+    exact_query += " GROUP BY Books.isbn"
+
+    # Filter by minimum rating using HAVING 
+    if minRating:
+        try:
+            exact_query += " HAVING AVG(Reviews.review_score) >= %s"
+            exact_params.append(float(minRating))
+        except ValueError:
+            pass
 
     exact_query += " ORDER BY Books.title"
 
@@ -141,7 +171,7 @@ def search_books():
         current_app.logger.exception("Book search request failed")
         return jsonify({"message": "Search unavailable"}), 503
 
-    # Convert rows into dictionaries
+    # Convert rows into dictionaries (matching the 8 selected columns)
     def format_rows(rows):
         return [
             {
@@ -151,9 +181,10 @@ def search_books():
                 "about": about,
                 "msrp": float(msrp) if msrp is not None else 0.0,
                 "publication_date": publication_date.isoformat() if publication_date else None,
+                "rating": float(avg_rating) if avg_rating is not None else None,
                 "genre": genre_name,
             }
-            for (isbn, title, author, about, msrp, publication_date, genre_name) in rows
+            for (isbn, title, author, about, msrp, publication_date, genre_name, avg_rating) in rows
         ]
 
     # Return both sets of results to React as JSON

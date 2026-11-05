@@ -78,19 +78,30 @@ function App() {
 
   const featuredBooks = books.slice(0, 4);
 
+  // Given query, which is a form, populate exact and alternative matches
   const handleSearch = async (query) => {
     setHasSearched(true);
     setPage("search");
 
     try {
+      // Pack all fields and relaxation flags into a URLSearchParams, to be sent to backend
       const params = new URLSearchParams({
         title: query.title || "",
         author: query.author || "",
         genre: query.genre || "All",
+        max_price: query.maxPrice || "",
+        min_rating: query.minRating || "",
+        publication_year: query.publicationYear || "",
+        relax_title: query.relaxTitle,
+        relax_author: query.relaxAuthor,
+        relax_genre: query.relaxGenre,
+        relax_price: query.relaxPrice,
+        relax_rating: query.relaxRating,
+        relax_year: query.relaxYear,
       });
 
       const results = await searchBooksApi(params);
-      setExactMatches(results.exact_matches);
+      setExactMatches(results.exact_matches); // set state
       setAlternativeMatches(results.alternative_matches);
     } catch (error) {
       console.error("Search error:", error);

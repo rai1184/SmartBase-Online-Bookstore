@@ -1,4 +1,4 @@
-
+// Turn DB result in readable object 
 export const formatBook = (book) => ({
   ISBN: book.isbn,
   Title: book.title,
