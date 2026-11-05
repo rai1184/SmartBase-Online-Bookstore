@@ -2,6 +2,7 @@ from contextlib import closing
 
 import mysql.connector
 from flask import Blueprint, current_app, jsonify, request
+from app.utils.queries import build_exact_query, build_alternative_query
 
 from app.database.connection import get_db_connection
 
@@ -98,67 +99,21 @@ def search_books():
     title = request.args.get("title", "").strip()
     author = request.args.get("author", "").strip()
     genre = request.args.get("genre", "All").strip()
-    maxPrice = request.args.get("maxPrice", "").strip()
-    minRating = request.args.get("minRating", "").strip()
-    publicationYear = request.args.get("publicationYear", "").strip()
+    max_price = request.args.get("maxPrice", "").strip()
+    min_rating = request.args.get("minRating", "").strip()
+    publication_year = request.args.get("publicationYear", "").strip()
+    relax_title = request.args.get("relaxTitle","").strip()
+    relax_author = request.args.get("relaxAuthor","").strip()
+    relax_genre = request.args.get("relaxGenre","").strip()
+    relax_price = request.args.get("relaxPrice","").strip()
+    relax_rating = request.args.get("relaxRating","").strip()
+    relax_year = request.args.get("relaxYear","").strip()
 
-    # Base SQL query structure
-    # Join books with genres so we can get the genre name
-    # Join books with reviews so we can use the average function to get the avg review score
-    base_select = """
-        SELECT
-            Books.isbn,
-            Books.title,
-            Books.author,
-            Books.about,
-            Books.msrp,
-            Books.publication_date,
-            Genres.genre_name,
-            AVG(Reviews.review_score) AS avg_rating
-        FROM Books
-        LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
-        LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
-    """
-
-    # Building the exact match query
-    exact_query = base_select + " WHERE 1=1"
-    exact_params = []
-
-    # MySQL has a "LIKE" keyword we can use
-    if title:
-        exact_query += " AND Books.title LIKE %s"
-        exact_params.append(f"%{title}%")
-    if author:
-        exact_query += " AND Books.author LIKE %s"
-        exact_params.append(f"%{author}%")
-    if genre and genre != "All":
-        exact_query += " AND Genres.genre_name = %s"
-        exact_params.append(genre)
-    if maxPrice:
-        try:
-            exact_query += " AND Books.msrp <= %s"
-            exact_params.append(float(maxPrice))
-        except ValueError:
-            pass
-    if publicationYear:
-        try:
-            exact_query += " AND YEAR(Books.publication_date) = %s"
-            exact_params.append(int(publicationYear))
-        except ValueError:
-            pass
-
-    # Group by the unique book
-    exact_query += " GROUP BY Books.isbn"
-
-    # Filter by minimum rating using HAVING 
-    if minRating:
-        try:
-            exact_query += " HAVING AVG(Reviews.review_score) >= %s"
-            exact_params.append(float(minRating))
-        except ValueError:
-            pass
-
-    exact_query += " ORDER BY Books.title"
+    # From this information, build our two queries
+    exact_query, exact_params = build_exact_query(title, author, genre, max_price, min_rating, publication_year)
+    #alternative_query, alternative_params = build_alternative_query(title, author, genre, max_price, min_rating, publication_year,
+    #                                            relax_title, relax_author, relax_genre, relax_price, relax_rating, relax_year
+    #                                            )
 
     try:
         with closing(get_db_connection()) as connection:
