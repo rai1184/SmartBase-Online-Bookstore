@@ -18,6 +18,29 @@ def health_check():
         }
     )
 
+@api_v1.get("/health/database")
+def database_health_check():
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor()) as cursor:
+                cursor.execute("SELECT COUNT(*) FROM Books")
+                book_count = cursor.fetchone()[0]
+    except (mysql.connector.Error, RuntimeError):
+        current_app.logger.exception("Database health check failed")
+        return jsonify(
+            {
+                "status": "error",
+                "message": "Database unavailable",
+            }
+        ), 503
+
+    return jsonify(
+        {
+            "status": "online",
+            "book_count": book_count,
+        }
+    )
+
 
 @api_v1.get("/books")
 def list_books():
@@ -67,30 +90,6 @@ def list_books():
         ) in rows
     ]
     return jsonify(books)
-
-
-@api_v1.get("/health/database")
-def database_health_check():
-    try:
-        with closing(get_db_connection()) as connection:
-            with closing(connection.cursor()) as cursor:
-                cursor.execute("SELECT COUNT(*) FROM Books")
-                book_count = cursor.fetchone()[0]
-    except (mysql.connector.Error, RuntimeError):
-        current_app.logger.exception("Database health check failed")
-        return jsonify(
-            {
-                "status": "error",
-                "message": "Database unavailable",
-            }
-        ), 503
-
-    return jsonify(
-        {
-            "status": "online",
-            "book_count": book_count,
-        }
-    )
 
 # The endpoint for searching. Returns a json object with both exact matches and alternatives
 @api_v1.get("/books/search")
