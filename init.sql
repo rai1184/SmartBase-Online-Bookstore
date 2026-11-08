@@ -21,18 +21,33 @@ CREATE TABLE IF NOT EXISTS Books (
 
 CREATE TABLE IF NOT EXISTS User (
     user_id INT PRIMARY KEY AUTO_INCREMENT,
-    user_name VARCHAR(255) NOT NULL,
-    user_email VARCHAR(255) NOT NULL,
-    user_password VARCHAR(255) NOT NULL
+    username VARCHAR(20) NOT NULL UNIQUE,
+    user_email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    google_sub VARCHAR(255) NOT NULL UNIQUE,
+    display_name VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_user_username_length
+        CHECK (CHAR_LENGTH(username) BETWEEN 3 AND 20)
 );
 
 CREATE TABLE IF NOT EXISTS Reviews (
     review_id INT PRIMARY KEY AUTO_INCREMENT,
     isbn VARCHAR(20) NOT NULL,
     user_id INT NOT NULL,
-    review_score INT CHECK (review_score BETWEEN 1 AND 5),
+    review_score INT NOT NULL CHECK (review_score BETWEEN 1 AND 5),
+    review_text TEXT NOT NULL,
     FOREIGN KEY (isbn) REFERENCES Books(isbn),
     FOREIGN KEY (user_id) REFERENCES User(user_id)
+);
+
+CREATE TABLE IF NOT EXISTS Favorites (
+    user_id INT NOT NULL,
+    isbn VARCHAR(20) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id, isbn),
+    FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
+    FOREIGN KEY (isbn) REFERENCES Books(isbn) ON DELETE CASCADE
 );
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -101,11 +116,3 @@ INSERT INTO Books (isbn, title, author, about, msrp, publication_date, genre_id)
 
 -- Children's Books / Picture Books (genre_id: 30)
 ('978-0060254926', 'Where the Wild Things Are', 'Maurice Sendak', 'A mischievous young boy named Max is sent to his room without supper, lets his imagination run wild, and sails to an island of monsters.', 18.95, '1963-11-09', 30);
-
-INSERT INTO User (user_id, user_name, user_email, user_password) VALUES
-(1, 'Alice Smith', 'alice@example.com', 'hashed_password_1'),
-(2, 'Bob Jones', 'bob@example.com', 'hashed_password_2');
-
-INSERT INTO Reviews (isbn, user_id, review_score) VALUES
-('978-0441172719', 1, 5),
-('978-0261102217', 2, 5);

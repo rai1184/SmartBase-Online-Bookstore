@@ -30,8 +30,8 @@ This document is a plan only; it does not implement authentication.
 - Do not automatically link accounts only because their email addresses
   match. Require the user to prove control of both sign-in methods before
   linking them.
-- Treat the existing `user_name` as a display name unless review of the
-  existing data establishes otherwise; add a separate username field.
+- Use `display_name` for the optional name from the Google profile and a
+  separate `username` for sign-in.
 
 Direct username-and-password registration without Google is outside the
 initial flow. If it is added later, decide separately whether those accounts
@@ -53,15 +53,16 @@ need email verification.
 
 ### 2. Design and migrate the database
 
-- Extend the existing `User` schema with a distinct username, a password-hash
-  field, and a Google subject identifier.
-- Enforce uniqueness for usernames, emails, and non-null Google identifiers.
-- Store password hashes only; never store raw passwords.
-- Add persistent storage for each user's favorites and ensure reviews,
-  including their text and score, are associated with the account. The
-  existing `Reviews` table stores a score but does not currently store review
-  text.
-- Preserve the current review foreign-key relationship to users.
+- The fresh-install schema in `init.sql` includes the account fields, review
+  text, and account-scoped favorites table. A separate migration is still
+  required to apply these changes to an already-initialized database.
+- Preserve `user_id` references from existing reviews when migrating the
+  `User` table to the new account fields.
+- Enforce uniqueness for usernames, emails, and Google subject identifiers;
+  store password hashes only, never raw passwords.
+- Preserve existing reviews while adding required review text, and create
+  `Favorites` with a composite `(user_id, isbn)` primary key and foreign keys
+  to users and books.
 - Provide a migration for existing databases and sample users. Updating
   `init.sql` alone is not enough for a database that has already been
   initialized, because the development database uses a persistent volume.
