@@ -157,14 +157,16 @@ def search_books():
     target_params = {
         "max_price": max_price,
         "publication_year": publication_year,
-        "min_rating": min_rating  # <--- Added
+        "min_rating": min_rating,
+        "genre": genre
     }
 
     # Whether or not we are relaxing these in particular plays into the alternate ranking
     relaxation_flags = {
         "relax_price": relax_price,
         "relax_year": relax_year,
-        "relax_rating": relax_rating  # <--- Added
+        "relax_rating": relax_rating,
+        "relax_genre": genre
     }
 
     # Rank alternatives
