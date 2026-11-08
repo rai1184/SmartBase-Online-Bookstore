@@ -11,7 +11,8 @@ def build_exact_query(title, author, genre, max_price, min_rating, publication_y
             Books.msrp,
             Books.publication_date,
             Genres.genre_name,
-            AVG(Reviews.review_score) AS avg_rating
+            AVG(Reviews.review_score) AS avg_rating,
+            Books.cover_image
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
         LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
@@ -71,7 +72,8 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
             Books.msrp,
             Books.publication_date,
             Genres.genre_name,
-            AVG(Reviews.review_score) AS avg_rating
+            AVG(Reviews.review_score) AS avg_rating,
+            Books.cover_image
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
         LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
@@ -80,7 +82,7 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
     query = base_select + " WHERE 1=1"
     params = []
 
-    # Only filter if present AND the user did NOT relaxs search
+    # Only filter if present AND the user did NOT relax search
     if title and not r_title:
         query += " AND Books.title LIKE %s"
         params.append(f"%{title}%")

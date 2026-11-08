@@ -30,7 +30,8 @@ def list_books():
             Books.about,
             Books.msrp,
             Books.publication_date,
-            Genres.genre_name
+            Genres.genre_name,
+            Books.cover_image
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
         ORDER BY Books.title
@@ -56,6 +57,7 @@ def list_books():
                 publication_date.isoformat() if publication_date else None
             ),
             "genre": genre_name,
+            "cover_image": cover_image
         }
         for (
             isbn,
@@ -65,6 +67,7 @@ def list_books():
             msrp,
             publication_date,
             genre_name,
+            cover_image
         ) in rows
     ]
     return jsonify(books)
@@ -144,8 +147,9 @@ def search_books():
                 "publication_date": publication_date.isoformat() if publication_date else None,
                 "rating": float(avg_rating) if avg_rating is not None else None,
                 "genre": genre_name,
+                "cover_image": cover_image
             }
-            for (isbn, title_val, author_val, about, msrp, publication_date, genre_name, avg_rating) in rows
+            for (isbn, title_val, author_val, about, msrp, publication_date, genre_name, avg_rating, cover_image) in rows
         ]
 
     formatted_exact = format_rows(exact_rows)

@@ -59,8 +59,13 @@ export default function BookCard({
         </button>
       </div>
 
-      <div className="book-cover-placeholder">
-        <span>{book.Genre}</span>
+      {/* Book Cover Image */}
+      <div className="book-cover-container">
+        <img 
+          src={book.CoverImage || "/images/books/default-cover.jpg"} 
+          alt={""} 
+          className="book-cover-image"
+        />
       </div>
       
       <div className="book-information">

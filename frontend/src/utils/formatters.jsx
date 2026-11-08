@@ -11,4 +11,5 @@ export const formatBook = (book) => ({
     ? Number(book.publication_date.slice(0, 4))
     : null,
   About: book.about,
+  CoverImage: book.cover_image
 });
