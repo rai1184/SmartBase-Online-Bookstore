@@ -59,7 +59,62 @@ def build_exact_query(title, author, genre, max_price, min_rating, publication_y
 
     return exact_query, exact_params
 
-# Returns alternative book suggestions based on relaxed parameters
+# Construct query that returns alternatives
 def build_alternative_query(title, author, genre, max_price, min_rating, publication_year,
                             r_title, r_author, r_genre, r_price, r_rating, r_year):
-    return 
+    base_select = """
+        SELECT
+            Books.isbn,
+            Books.title,
+            Books.author,
+            Books.about,
+            Books.msrp,
+            Books.publication_date,
+            Genres.genre_name,
+            AVG(Reviews.review_score) AS avg_rating
+        FROM Books
+        LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
+        LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
+    """
+
+    query = base_select + " WHERE 1=1"
+    params = []
+
+    # Only filter if present AND the user did NOT relaxs search
+    if title and not r_title:
+        query += " AND Books.title LIKE %s"
+        params.append(f"%{title}%")
+
+    if author and not r_author:
+        query += " AND Books.author LIKE %s"
+        params.append(f"%{author}%")
+
+    if genre and genre != "All" and not r_genre:
+        query += " AND Genres.genre_name = %s"
+        params.append(genre)
+
+    if max_price and not r_price:
+        try:
+            query += " AND Books.msrp <= %s"
+            params.append(float(max_price))
+        except ValueError:
+            pass
+
+    if publication_year and not r_year:
+        try:
+            query += " AND YEAR(Books.publication_date) = %s"
+            params.append(int(publication_year))
+        except ValueError:
+            pass
+
+    query += " GROUP BY Books.isbn"
+
+    if min_rating and not r_rating:
+        try:
+            query += " HAVING AVG(Reviews.review_score) >= %s"
+            params.append(float(min_rating))
+        except ValueError:
+            pass
+
+    query += " ORDER BY Books.title"
+    return query, params

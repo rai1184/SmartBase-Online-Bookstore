@@ -3,6 +3,7 @@ from contextlib import closing
 import mysql.connector
 from flask import Blueprint, current_app, jsonify, request
 from app.utils.queries import build_exact_query, build_alternative_query
+from app.utils.scoring import rank_alternatives
 
 from app.database.connection import get_db_connection
 
@@ -92,7 +93,9 @@ def database_health_check():
         }
     )
 
-# The endpoint for searching. Returns a json object with both exact matches and alternatives
+# Import your scoring functions at the top of your route file
+from app.utils.scoring import rank_alternatives
+
 @api_v1.get("/books/search")
 def search_books():
     # Grab search parameters from the URL sent by React
@@ -102,48 +105,72 @@ def search_books():
     max_price = request.args.get("max_price", "").strip()
     min_rating = request.args.get("min_rating", "").strip()
     publication_year = request.args.get("publication_year", "").strip()
-    relax_title = request.args.get("relax_title","").strip()
-    relax_author = request.args.get("relax_author","").strip()
-    relax_genre = request.args.get("relax_genre","").strip()
-    relax_price = request.args.get("relax_price","").strip()
-    relax_rating = request.args.get("relax_rating","").strip()
-    relax_year = request.args.get("relax_year","").strip()
+    
+    relax_title = request.args.get("relax_title", "").strip() == "true"
+    relax_author = request.args.get("relax_author", "").strip() == "true"
+    relax_genre = request.args.get("relax_genre", "").strip() == "true"
+    relax_price = request.args.get("relax_price", "").strip() == "true"
+    relax_rating = request.args.get("relax_rating", "").strip() == "true"
+    relax_year = request.args.get("relax_year", "").strip() == "true"
 
-    # From this information, build our two queries
+    # Create queries
     exact_query, exact_params = build_exact_query(title, author, genre, max_price, min_rating, publication_year)
-    #alternative_query, alternative_params = build_alternative_query(title, author, genre, max_price, min_rating, publication_year,
-    #                                            relax_title, relax_author, relax_genre, relax_price, relax_rating, relax_year
-    #                                            )
+    alternative_query, alternative_params = build_alternative_query(
+        title, author, genre, max_price, min_rating, publication_year,
+        relax_title, relax_author, relax_genre, relax_price, relax_rating, relax_year
+    )
 
+    # Run the created queries
     try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor()) as cursor:
-                # Run the exact match query
                 cursor.execute(exact_query, tuple(exact_params))
-                exact_rows = cursor.fetchall() # all exact matches
+                exact_rows = cursor.fetchall()
+                cursor.execute(alternative_query, tuple(alternative_params))
+                alternate_rows = cursor.fetchall()
 
     except (mysql.connector.Error, RuntimeError):
         current_app.logger.exception("Book search request failed")
         return jsonify({"message": "Search unavailable"}), 503
 
-    # Convert rows into dictionaries (matching the 8 selected columns)
     def format_rows(rows):
         return [
             {
                 "isbn": isbn,
-                "title": title,
-                "author": author,
+                "title": title_val,
+                "author": author_val,
                 "about": about,
                 "msrp": float(msrp) if msrp is not None else 0.0,
                 "publication_date": publication_date.isoformat() if publication_date else None,
                 "rating": float(avg_rating) if avg_rating is not None else None,
                 "genre": genre_name,
             }
-            for (isbn, title, author, about, msrp, publication_date, genre_name, avg_rating) in rows
+            for (isbn, title_val, author_val, about, msrp, publication_date, genre_name, avg_rating) in rows
         ]
 
-    # Return both sets of results to React as JSON
+    formatted_exact = format_rows(exact_rows)
+    formatted_alternatives = format_rows(alternate_rows)
+
+    exact_isbns = {book["isbn"] for book in formatted_exact}
+
+    # Target parameters for the alternative search
+    target_params = {
+        "max_price": max_price,
+        "publication_year": publication_year
+    }
+
+    # Whether or not we are relaxing these in particular plays into the alternate ranking
+    relaxation_flags = {
+        "relax_price": relax_price,
+        "relax_year": relax_year
+    }
+
+    # Rank alternatives
+    scored_alternatives = rank_alternatives(
+        formatted_alternatives, exact_isbns, target_params, relaxation_flags
+    )
+
     return jsonify({
-        "exact_matches": format_rows(exact_rows),
-        "alternative_matches": [], 
+        "exact_matches": formatted_exact,
+        "alternative_matches": scored_alternatives, 
     })
