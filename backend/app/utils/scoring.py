@@ -1,52 +1,64 @@
-# Calculate similarity score for a book
-def score_alternative(book, target_params, relaxation_flags):
+# backend/app/utils/scoring.py
 
+def score_alternative(book, target_params, relaxation_flags):
     distance = 0.0
     
     max_price = target_params.get("max_price")
     publication_year = target_params.get("publication_year")
+    min_rating = target_params.get("min_rating")  # <--- Added
     
     relax_price = relaxation_flags.get("relax_price", False)
     relax_year = relaxation_flags.get("relax_year", False)
+    relax_rating = relaxation_flags.get("relax_rating", False)  # <--- Added
 
-    # Price distance
+    # 1. Price distance
     if relax_price and max_price:
         try:
             target_p = float(max_price)
             actual_p = book["msrp"]
-            # Normalize difference,  max reasonable price is $50
             price_diff = abs(actual_p - target_p)
-            distance += min(price_diff / 50.0, 1.0) * 0.5
+            distance += min(price_diff / 50.0, 1.0) * 0.33
         except ValueError:
             pass
 
-    # Publication year distance
+    # 2. Publication year distance
     if relax_year and publication_year:
         try:
             target_y = int(publication_year)
             if book["publication_date"]:
                 actual_y = int(book["publication_date"][:4])
                 year_diff = abs(actual_y - target_y)
-                # Normalize difference (assuming max reasonable year delta is 20 years)
-                distance += min(year_diff / 20.0, 1.0) * 0.5
+                distance += min(year_diff / 20.0, 1.0) * 0.33
         except ValueError:
             pass
             
-    # Future TAH genre distance logic can be cleanly added here!
+    # 3. Rating distance (ONLY active when r_rating is True)
+    if relax_rating and min_rating:
+        try:
+            target_r = float(min_rating)
+            actual_r = book["rating"]
+            
+            if actual_r is not None:
+                if actual_r < target_r:
+                    # Penalize the gap between actual rating and target minimum
+                    rating_gap = target_r - actual_r
+                    distance += (rating_gap / 5.0) * 0.34  # Normalized across 5-star scale
+            else:
+                # Unrated books get a minor penalty when rating constraint is relaxed
+                distance += 0.2 * 0.34
+        except ValueError:
+            pass
     
     return distance
 
-# Filter out duplicates, create similiarity scores, then sort
+
 def rank_alternatives(formatted_alternatives, exact_isbns, target_params, relaxation_flags):
     scored_alternatives = []
     
     for book in formatted_alternatives:
-        # Exclude books that are already shown in exact matches
         if book["isbn"] not in exact_isbns:
             book["similarity_score"] = score_alternative(book, target_params, relaxation_flags)
             scored_alternatives.append(book)
 
-    # Sort alternatives by similarity score (lowest distance = best alternative match)
     scored_alternatives.sort(key=lambda x: x["similarity_score"])
-    
     return scored_alternatives
