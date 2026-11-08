@@ -56,18 +56,18 @@ need email verification.
 - The fresh-install schema in `init.sql` includes the account fields, review
   text, and account-scoped favorites table. A separate migration is still
   required to apply these changes to an already-initialized database.
-- Preserve `user_id` references from existing reviews when migrating the
-  `User` table to the new account fields.
+- The one-time migration in
+  `migrations/001_auth_favorites_reviews.sql` removes the original sample users
+  and their reviews, then applies the new account, review, and favorites
+  schema. It stops if it finds users outside the original sample accounts.
+- Back up the database before running the migration. It is not safe to run on
+  a database containing real user data.
 - Enforce uniqueness for usernames, emails, and Google subject identifiers;
   store password hashes only, never raw passwords.
-- Preserve existing reviews while adding required review text, and create
-  `Favorites` with a composite `(user_id, isbn)` primary key and foreign keys
-  to users and books.
-- Provide a migration for existing databases and sample users. Updating
-  `init.sql` alone is not enough for a database that has already been
-  initialized, because the development database uses a persistent volume.
-- Decide and implement how existing browser-local favorites and reviews are
-  retained or imported when accounts are introduced.
+- Create `Favorites` with a composite `(user_id, isbn)` primary key and
+  foreign keys to users and books.
+- Browser-local favorites and reviews are not imported by this migration;
+  decide how the frontend should handle that data when account sync is added.
 - Verify the migration against both an empty database and a database
   containing existing rows.
 
