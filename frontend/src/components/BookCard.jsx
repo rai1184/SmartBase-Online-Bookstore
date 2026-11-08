@@ -3,7 +3,6 @@ import { useState } from "react";
 export default function BookCard({
   book,
   type,
-  similarityScore,
   favorite,
   toggleFavorite,
   reviews = [],
@@ -41,13 +40,6 @@ export default function BookCard({
               Exact Match
             </span>
           )}
-
-          {type === "alternative" && (
-            <span className="match-badge">
-              {Math.round(similarityScore * 100)}% Match
-            </span>
-          )}
-
         </div>
 
         <button
