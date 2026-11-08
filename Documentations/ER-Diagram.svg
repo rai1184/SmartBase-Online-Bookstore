@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="820" viewBox="0 0 1280 820" role="img" aria-labelledby="title description">
+  <title id="title">SmartBase Online Bookstore ER Diagram</title>
+  <desc id="description">Entity relationship diagram showing books, genres, users, reviews, and favorites with their database keys and relationships.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { fill: #0f172a; font: 700 30px Arial, sans-serif; }
+      .subtitle { fill: #475569; font: 15px Arial, sans-serif; }
+      .entity { fill: #ffffff; stroke: #334155; stroke-width: 2; rx: 12; }
+      .entity-head { fill: #e2e8f0; }
+      .entity-name { fill: #0f172a; font: 700 19px Arial, sans-serif; }
+      .field { fill: #1e293b; font: 15px Arial, sans-serif; }
+      .key { fill: #1d4ed8; font: 700 13px Arial, sans-serif; }
+      .line { fill: none; stroke: #475569; stroke-width: 2.2; }
+      .review-line { stroke: #0f766e; }
+      .favorite-line { stroke: #b45309; }
+      .genre-line { stroke: #475569; }
+      .card { fill: #0f172a; font: 700 14px Arial, sans-serif; }
+      .rel { fill: #334155; font: 14px Arial, sans-serif; }
+      .legend { fill: #475569; font: 13px Arial, sans-serif; }
+    </style>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+      <path d="M0,0 L8,4 L0,8 Z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1280" height="820"/>
+  <text class="title" x="48" y="52">SmartBase Online Bookstore</text>
+  <text class="subtitle" x="48" y="79">Entity-relationship diagram · current database schema</text>
+
+  <g aria-label="Genres entity">
+    <rect class="entity" x="65" y="205" width="275" height="190"/>
+    <path class="entity-head" d="M77 205 H328 Q340 205 340 217 V249 H65 V217 Q65 205 77 205 Z"/>
+    <text class="entity-name" x="88" y="234">Genres</text>
+    <text class="key" x="86" y="279">PK</text><text class="field" x="127" y="279">genre_id</text>
+    <text class="field" x="127" y="310">genre_name</text>
+    <text class="key" x="86" y="341">FK</text><text class="field" x="127" y="341">genre_parent_id · nullable</text>
+    <text class="legend" x="86" y="372">Self-reference: parent genre</text>
+  </g>
+
+  <g aria-label="Books entity">
+    <rect class="entity" x="480" y="135" width="330" height="300"/>
+    <path class="entity-head" d="M492 135 H798 Q810 135 810 147 V179 H480 V147 Q480 135 492 135 Z"/>
+    <text class="entity-name" x="503" y="164">Books</text>
+    <text class="key" x="501" y="209">PK</text><text class="field" x="542" y="209">isbn</text>
+    <text class="field" x="542" y="240">title</text>
+    <text class="field" x="542" y="271">author</text>
+    <text class="field" x="542" y="302">about</text>
+    <text class="field" x="542" y="333">msrp</text>
+    <text class="field" x="542" y="364">publication_date</text>
+    <text class="key" x="501" y="395">FK</text><text class="field" x="542" y="395">genre_id · nullable</text>
+  </g>
+
+  <g aria-label="User entity">
+    <rect class="entity" x="65" y="535" width="340" height="235"/>
+    <path class="entity-head" d="M77 535 H393 Q405 535 405 547 V579 H65 V547 Q65 535 77 535 Z"/>
+    <text class="entity-name" x="88" y="564">User</text>
+    <text class="key" x="86" y="609">PK</text><text class="field" x="127" y="609">user_id</text>
+    <text class="field" x="127" y="640">username</text>
+    <text class="field" x="127" y="671">user_email</text>
+    <text class="field" x="127" y="702">password_hash</text>
+    <text class="field" x="127" y="733">google_sub · display_name · created_at</text>
+  </g>
+
+  <g aria-label="Reviews entity">
+    <rect class="entity" x="900" y="135" width="315" height="235"/>
+    <path class="entity-head" d="M912 135 H1203 Q1215 135 1215 147 V179 H900 V147 Q900 135 912 135 Z"/>
+    <text class="entity-name" x="923" y="164">Reviews</text>
+    <text class="key" x="921" y="209">PK</text><text class="field" x="962" y="209">review_id</text>
+    <text class="key" x="921" y="240">FK</text><text class="field" x="962" y="240">isbn</text>
+    <text class="key" x="921" y="271">FK</text><text class="field" x="962" y="271">user_id</text>
+    <text class="field" x="962" y="302">review_score · 1–5</text>
+    <text class="field" x="962" y="333">review_text</text>
+  </g>
+
+  <g aria-label="Favorites entity">
+    <rect class="entity" x="900" y="515" width="315" height="190"/>
+    <path class="entity-head" d="M912 515 H1203 Q1215 515 1215 527 V559 H900 V527 Q900 515 912 515 Z"/>
+    <text class="entity-name" x="923" y="544">Favorites</text>
+    <text class="key" x="921" y="591">PK, FK</text><text class="field" x="986" y="591">user_id</text>
+    <text class="key" x="921" y="622">PK, FK</text><text class="field" x="986" y="622">isbn</text>
+    <text class="field" x="986" y="653">created_at</text>
+    <text class="legend" x="921" y="682">(user_id, isbn) is the composite PK</text>
+  </g>
+
+  <path class="line genre-line" d="M340 291 H480"/>
+  <text class="card" x="352" y="279">0..*</text>
+  <text class="card" x="447" y="279">0..1</text>
+  <text class="rel" x="368" y="315">classifies</text>
+
+  <path class="line genre-line" d="M104 205 V135 H250 V205"/>
+  <text class="card" x="88" y="193">0..*</text>
+  <text class="card" x="253" y="193">0..1 parent</text>
+  <text class="rel" x="112" y="126">parent / subgenres</text>
+
+  <path class="line review-line" d="M810 220 H900"/>
+  <text class="card" x="815" y="207">0..*</text>
+  <text class="card" x="864" y="207">1</text>
+  <text class="rel" x="826" y="246">book receives reviews</text>
+
+  <path class="line review-line" d="M405 590 H850 V335 H900"/>
+  <text class="card" x="414" y="578">0..*</text>
+  <text class="card" x="864" y="326">1</text>
+  <text class="rel" x="664" y="580">user writes reviews</text>
+
+  <path class="line favorite-line" d="M810 390 H850 V585 H900"/>
+  <text class="card" x="815" y="378">0..*</text>
+  <text class="card" x="864" y="577">1</text>
+  <text class="rel" x="813" y="489">book is favorited</text>
+
+  <path class="line favorite-line" d="M405 700 H850 V635 H900"/>
+  <text class="card" x="414" y="690">0..*</text>
+  <text class="card" x="864" y="626">1</text>
+  <text class="rel" x="655" y="694">user favorites books</text>
+
+  <rect x="475" y="735" width="740" height="48" rx="8" fill="#fff7ed" stroke="#fdba74"/>
+  <text class="legend" x="493" y="756">Reviews and Favorites are separate User–Book relationships.</text>
+  <text class="legend" x="493" y="774">A favorite does not require a review; each Favorites row uniquely identifies one user–book pair.</text>
+</svg>
