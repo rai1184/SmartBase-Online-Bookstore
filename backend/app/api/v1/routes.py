@@ -166,7 +166,7 @@ def search_books():
         "relax_price": relax_price,
         "relax_year": relax_year,
         "relax_rating": relax_rating,
-        "relax_genre": genre
+        "relax_genre": relax_genre
     }
 
     # Rank alternatives
