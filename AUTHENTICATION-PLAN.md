@@ -41,15 +41,15 @@ need email verification.
 
 ### 1. Confirm account model
 
-- Confirm username and password rules, including length and allowed
-  characters.
-- Confirm that new account creation starts with Google and that both Google
-  and username/password sign-in are available after setup.
-- Confirm that account linking requires authentication to both methods.
-- Decide whether favorites and reviews should be associated with an account
-  and synchronized across devices. They are currently stored in browser
-  `localStorage`, so authentication alone will not make them persistent per
-  user.
+- Usernames are 3–20 characters, using letters, numbers, and underscores.
+- App passwords are 12–128 characters, with no additional composition rules.
+- New account creation starts with Google; after setup, both Google and
+  username/password sign-in are available.
+- Accounts are not automatically linked based only on matching emails;
+  linking requires proving control of both sign-in methods.
+- Favorites and reviews are in scope for the first release and should be
+  associated with the signed-in account and synchronized across devices.
+  They are currently stored in browser `localStorage`.
 
 ### 2. Design and migrate the database
 
@@ -57,10 +57,16 @@ need email verification.
   field, and a Google subject identifier.
 - Enforce uniqueness for usernames, emails, and non-null Google identifiers.
 - Store password hashes only; never store raw passwords.
+- Add persistent storage for each user's favorites and ensure reviews,
+  including their text and score, are associated with the account. The
+  existing `Reviews` table stores a score but does not currently store review
+  text.
 - Preserve the current review foreign-key relationship to users.
 - Provide a migration for existing databases and sample users. Updating
   `init.sql` alone is not enough for a database that has already been
   initialized, because the development database uses a persistent volume.
+- Decide and implement how existing browser-local favorites and reviews are
+  retained or imported when accounts are introduced.
 - Verify the migration against both an empty database and a database
   containing existing rows.
 
@@ -70,6 +76,8 @@ need email verification.
   username/password sign-in, Google sign-in, current-user lookup, and
   sign-out.
 - Validate all input on the backend and use parameterized SQL.
+- Add authenticated endpoints for reading and updating the user's favorites
+  and reviews so data is scoped to the signed-in account.
 - Hash and verify passwords with a suitable password-hashing library.
 - Verify Google credentials server-side, require Google's verified-email
   claim, and identify Google accounts by their stable subject identifier, not
@@ -91,6 +99,8 @@ need email verification.
 - On app startup, ask Flask for the current session instead of treating
   `localStorage` user data as proof of authentication.
 - Update logout and account display to use the backend session.
+- Load and save favorites and reviews through the authenticated API so they
+  follow the user across devices.
 - Preserve the existing logged-out experience and book browsing.
 
 ### 5. Test, configure, and document
@@ -109,12 +119,11 @@ need email verification.
 
 ## Initial scope
 
-The recommended first release includes Google verification, required
-username/password setup for new Google accounts, both sign-in methods, secure
-sessions, and a database migration. It does not send confirmation emails.
-Direct password-only registration, password reset, email verification for
-non-Google signup, and account-linked favorites/reviews can be separate
-follow-up work unless they are required for launch.
+The first release includes Google verification, required username/password
+setup for new Google accounts, both sign-in methods, secure sessions, a
+database migration, and account-synced favorites and reviews. It does not send
+confirmation emails. Direct password-only registration, password reset, and
+email verification for non-Google signup can be separate follow-up work.
 
 ## Completion criteria
 
@@ -126,6 +135,8 @@ follow-up work unless they are required for launch.
   app-specific password.
 - Google signup does not require the app to send a separate confirmation
   email.
+- Favorites and reviews are stored against the signed-in account and remain
+  available across devices.
 - A signed-in session is restored after a page reload and is cleared by
   sign-out.
 - Client-side storage alone cannot create an authenticated session.
