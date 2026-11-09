@@ -31,6 +31,13 @@ export default function BookCard({
     setShowReview(false);
   };
 
+  // Determine review count and rating formatted string
+  const totalReviews = book.ReviewCount ?? reviews.length;
+  const ratingDisplay =
+    book.Rating != null && book.Rating > 0
+      ? `★ ${book.Rating.toFixed(1)}`
+      : "Not rated";
+
   return (
     <article className="book-card">
       <div className="card-top">
@@ -91,11 +98,11 @@ export default function BookCard({
 
         <div className="book-price-row">
           <strong>
-            ${book.MSRP.toFixed(2)}
+            ${book.MSRP ? book.MSRP.toFixed(2) : "0.00"}
           </strong>
 
           <span>
-            {book.Rating == null ? "Not rated" : `★ ${book.Rating}`}
+            {ratingDisplay}
           </span>
         </div>
 
@@ -105,8 +112,7 @@ export default function BookCard({
 
         <div className="review-header">
           <span>
-            {reviews.length} review
-            {reviews.length === 1 ? "" : "s"}
+            {totalReviews} review{totalReviews === 1 ? "" : "s"}
           </span>
 
           <button
@@ -114,7 +120,7 @@ export default function BookCard({
               setShowReview(!showReview)
             }
           >
-            Write Review
+            {showReview ? "Cancel" : "Write Review"}
           </button>
         </div>
 

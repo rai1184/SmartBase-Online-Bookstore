@@ -2,8 +2,9 @@ from contextlib import closing
 
 import mysql.connector
 from flask import Blueprint, current_app, jsonify, request
-from app.utils.queries import build_exact_query, build_alternative_query
+from app.utils.queries import build_alternative_query, build_exact_query, build_insert_review_query
 from app.utils.scoring import rank_alternatives
+from app.utils.format import format_book
 
 from app.database.connection import get_db_connection
 
@@ -31,9 +32,13 @@ def list_books():
             Books.msrp,
             Books.publication_date,
             Genres.genre_name,
+            AVG(Reviews.review_score) AS avg_rating,
+            COUNT(Reviews.review_score) AS review_count,
             Books.cover_image
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
+        LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
+        GROUP BY Books.isbn
         ORDER BY Books.title
     """
 
@@ -46,30 +51,7 @@ def list_books():
         current_app.logger.exception("Book list request failed")
         return jsonify({"message": "Books unavailable"}), 503
 
-    books = [
-        {
-            "isbn": isbn,
-            "title": title,
-            "author": author,
-            "about": about,
-            "msrp": float(msrp),
-            "publication_date": (
-                publication_date.isoformat() if publication_date else None
-            ),
-            "genre": genre_name,
-            "cover_image": cover_image
-        }
-        for (
-            isbn,
-            title,
-            author,
-            about,
-            msrp,
-            publication_date,
-            genre_name,
-            cover_image
-        ) in rows
-    ]
+    books = [format_book(row) for row in rows]
     return jsonify(books)
 
 
@@ -96,8 +78,6 @@ def database_health_check():
         }
     )
 
-# Import your scoring functions at the top of your route file
-from app.utils.scoring import rank_alternatives
 
 @api_v1.get("/books/search")
 def search_books():
@@ -136,24 +116,8 @@ def search_books():
         current_app.logger.exception("Book search request failed")
         return jsonify({"message": "Search unavailable"}), 503
 
-    def format_rows(rows):
-        return [
-            {
-                "isbn": isbn,
-                "title": title_val,
-                "author": author_val,
-                "about": about,
-                "msrp": float(msrp) if msrp is not None else 0.0,
-                "publication_date": publication_date.isoformat() if publication_date else None,
-                "rating": float(avg_rating) if avg_rating is not None else None,
-                "genre": genre_name,
-                "cover_image": cover_image
-            }
-            for (isbn, title_val, author_val, about, msrp, publication_date, genre_name, avg_rating, cover_image) in rows
-        ]
-
-    formatted_exact = format_rows(exact_rows)
-    formatted_alternatives = format_rows(alternate_rows)
+    formatted_exact = [format_book(row) for row in exact_rows]
+    formatted_alternatives = [format_book(row) for row in alternate_rows]
 
     exact_isbns = {book["isbn"] for book in formatted_exact}
 
@@ -182,3 +146,43 @@ def search_books():
         "exact_matches": formatted_exact,
         "alternative_matches": scored_alternatives, 
     })
+
+
+# Submit a review for a book
+@api_v1.route('/reviews', methods=['POST'])
+def submit_review():
+    data = request.get_json()
+    
+    isbn = data.get('isbn')
+    rating = data.get('rating')
+    comment = data.get('comment', '')
+    # TEMPORARY: When implemented, put logged in user's username here
+    username = data.get('username', 'Anonymous')
+
+    # Basic validation
+    if not isbn or not rating:
+        return jsonify({"error": "ISBN and rating are required fields."}), 400
+
+    try:
+        # Build the query and parameters
+        query, params = build_insert_review_query(isbn, rating, comment, username)
+
+        # Execute and commit using connection pooling
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor()) as cursor:
+                cursor.execute(query, params)
+                connection.commit()
+
+        return jsonify({
+            "message": "Review submitted successfully!",
+            "review": {
+                "isbn": isbn,
+                "rating": rating,
+                "comment": comment,
+                "username": username
+            }
+        }), 201
+
+    except Exception as e:
+        current_app.logger.exception("Review submission failed")
+        return jsonify({"error": str(e)}), 500
