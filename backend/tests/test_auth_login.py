@@ -1,5 +1,6 @@
 import unittest
 from http.cookies import SimpleCookie
+import hashlib
 from unittest.mock import patch
 
 import mysql.connector
@@ -145,6 +146,121 @@ class UsernamePasswordLoginTests(unittest.TestCase):
         cookie = SimpleCookie()
         cookie.load(response.headers["Set-Cookie"])
         self.assertTrue(cookie["smartbase_session"]["secure"])
+
+
+class AuthSessionEndpointTests(unittest.TestCase):
+    def setUp(self):
+        self.client = create_app().test_client()
+
+    @patch("app.api.v1.routes.get_db_connection")
+    def test_current_session_returns_user_for_valid_cookie(self, get_connection):
+        token = "valid-session-token"
+        cursor = get_connection.return_value.cursor.return_value
+        cursor.fetchone.return_value = (7, "book_reader")
+        self.client.set_cookie("smartbase_session", token)
+
+        response = self.client.get("/api/auth/me")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json,
+            {"user": {"user_id": 7, "username": "book_reader"}},
+        )
+        cursor.execute.assert_called_once()
+        query, params = cursor.execute.call_args.args
+        self.assertIn("AuthSessions.expires_at > UTC_TIMESTAMP()", query)
+        self.assertEqual(
+            params,
+            (hashlib.sha256(token.encode("utf-8")).hexdigest(),),
+        )
+
+    @patch("app.api.v1.routes.get_db_connection")
+    def test_current_session_rejects_missing_cookie_without_database_access(
+        self, get_connection
+    ):
+        response = self.client.get("/api/auth/me")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json, {"message": "Authentication required"})
+        get_connection.assert_not_called()
+
+    @patch("app.api.v1.routes.get_db_connection")
+    def test_current_session_clears_cookie_for_expired_or_unknown_token(
+        self, get_connection
+    ):
+        cursor = get_connection.return_value.cursor.return_value
+        cursor.fetchone.return_value = None
+        self.client.set_cookie("smartbase_session", "stale-token")
+
+        response = self.client.get("/api/auth/me")
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.json, {"message": "Authentication required"})
+        self.assertIn("smartbase_session=", response.headers["Set-Cookie"])
+        self.assertIn("Max-Age=0", response.headers["Set-Cookie"])
+
+    @patch(
+        "app.api.v1.routes.get_db_connection",
+        side_effect=mysql.connector.Error("database details"),
+    )
+    def test_current_session_returns_service_error_on_database_failure(
+        self, _get_connection
+    ):
+        self.client.set_cookie("smartbase_session", "valid-token")
+        response = self.client.get("/api/auth/me")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json,
+            {"message": "Session lookup unavailable"},
+        )
+        self.assertNotIn("database details", response.get_data(as_text=True))
+
+    @patch("app.api.v1.routes.get_db_connection")
+    def test_logout_deletes_server_session_and_clears_cookie(
+        self, get_connection
+    ):
+        token = "valid-session-token"
+        cursor = get_connection.return_value.cursor.return_value
+        self.client.set_cookie("smartbase_session", token)
+
+        response = self.client.post("/api/auth/logout")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {"message": "Signed out"})
+        cursor.execute.assert_called_once()
+        query, params = cursor.execute.call_args.args
+        self.assertIn("DELETE FROM AuthSessions", query)
+        self.assertEqual(
+            params,
+            (hashlib.sha256(token.encode("utf-8")).hexdigest(),),
+        )
+        get_connection.return_value.commit.assert_called_once()
+        self.assertIn("Max-Age=0", response.headers["Set-Cookie"])
+
+    @patch("app.api.v1.routes.get_db_connection")
+    def test_logout_without_cookie_is_idempotent(self, get_connection):
+        response = self.client.post("/api/auth/logout")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {"message": "Signed out"})
+        self.assertIn("Max-Age=0", response.headers["Set-Cookie"])
+        get_connection.assert_not_called()
+
+    @patch(
+        "app.api.v1.routes.get_db_connection",
+        side_effect=mysql.connector.Error("database details"),
+    )
+    def test_logout_database_failure_does_not_claim_success(
+        self, _get_connection
+    ):
+        self.client.set_cookie("smartbase_session", "valid-token")
+        response = self.client.post("/api/auth/logout")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json, {"message": "Logout unavailable"})
+        self.assertIsNone(response.headers.get("Set-Cookie"))
+        self.assertNotIn("database details", response.get_data(as_text=True))
 
 
 if __name__ == "__main__":

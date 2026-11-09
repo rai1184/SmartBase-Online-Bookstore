@@ -93,6 +93,81 @@ def login():
     return response
 
 
+@api_v1.get("/auth/me")
+def current_session():
+    session_token = request.cookies.get(AUTH_SESSION_COOKIE)
+    if not session_token:
+        return jsonify({"message": "Authentication required"}), 401
+
+    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor()) as cursor:
+                cursor.execute(
+                    """
+                    SELECT `User`.user_id, `User`.username
+                    FROM AuthSessions
+                    JOIN `User` ON `User`.user_id = AuthSessions.user_id
+                    WHERE AuthSessions.session_token_hash = %s
+                      AND AuthSessions.expires_at > UTC_TIMESTAMP()
+                    """,
+                    (session_token_hash,),
+                )
+                user = cursor.fetchone()
+    except (mysql.connector.Error, RuntimeError):
+        current_app.logger.exception("Current session lookup failed")
+        return jsonify({"message": "Session lookup unavailable"}), 503
+
+    if user is None:
+        response = make_response(
+            jsonify({"message": "Authentication required"}),
+            401,
+        )
+        response.delete_cookie(
+            AUTH_SESSION_COOKIE,
+            path="/",
+            secure=current_app.config["AUTH_SESSION_COOKIE_SECURE"],
+            httponly=True,
+            samesite="Lax",
+        )
+        return response
+
+    return jsonify({"user": {"user_id": user[0], "username": user[1]}})
+
+
+@api_v1.post("/auth/logout")
+def logout():
+    session_token = request.cookies.get(AUTH_SESSION_COOKIE)
+    if session_token:
+        session_token_hash = hashlib.sha256(
+            session_token.encode("utf-8")
+        ).hexdigest()
+        try:
+            with closing(get_db_connection()) as connection:
+                with closing(connection.cursor()) as cursor:
+                    cursor.execute(
+                        """
+                        DELETE FROM AuthSessions
+                        WHERE session_token_hash = %s
+                        """,
+                        (session_token_hash,),
+                    )
+                connection.commit()
+        except (mysql.connector.Error, RuntimeError):
+            current_app.logger.exception("Logout failed")
+            return jsonify({"message": "Logout unavailable"}), 503
+
+    response = make_response(jsonify({"message": "Signed out"}))
+    response.delete_cookie(
+        AUTH_SESSION_COOKIE,
+        path="/",
+        secure=current_app.config["AUTH_SESSION_COOKIE_SECURE"],
+        httponly=True,
+        samesite="Lax",
+    )
+    return response
+
+
 @api_v1.get("/health/database")
 def database_health_check():
     try:

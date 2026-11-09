@@ -78,8 +78,10 @@ need email verification.
   `AuthSessions`; the browser receives the token in an HttpOnly, SameSite=Lax
   cookie. For existing databases that have already run migration 001, run
   `migrations/002_auth_sessions.sql` before using this endpoint. Set
-  `AUTH_SESSION_COOKIE_SECURE=true` when serving over HTTPS. The current-user
-  lookup and sign-out endpoints are still to be implemented.
+  `AUTH_SESSION_COOKIE_SECURE=true` when serving over HTTPS.
+- Implemented `GET /api/auth/me` to return the account associated with a valid,
+  unexpired session cookie, and `POST /api/auth/logout` to revoke the session
+  and clear the cookie. The React app is not yet connected to these endpoints.
 - Add endpoints for completing account setup after Google verification,
   Google sign-in, current-user lookup, and sign-out.
 - Validate all input on the backend and use parameterized SQL.
