@@ -24,6 +24,8 @@ steps.
   Do not put a client secret in this repository. The planned ID-token
   verification flow uses the client ID as the token audience and does not
   require a client secret.
+- The client ID is configured as `GOOGLE_CLIENT_ID` in the Compose `app`
+  service environment so Flask can use it when verifying Google ID tokens.
 - The original database migration and the `AuthSessions` table migration have
   been run and verified on `smartbase_db`.
 - Flask username/password login, current-session lookup, and logout endpoints
