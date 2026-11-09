@@ -73,9 +73,15 @@ need email verification.
 
 ### 3. Implement Flask authentication
 
+- Implemented `POST /api/auth/login` for existing accounts. It verifies the
+  password hash and stores only a hash of a random seven-day session token in
+  `AuthSessions`; the browser receives the token in an HttpOnly, SameSite=Lax
+  cookie. For existing databases that have already run migration 001, run
+  `migrations/002_auth_sessions.sql` before using this endpoint. Set
+  `AUTH_SESSION_COOKIE_SECURE=true` when serving over HTTPS. The current-user
+  lookup and sign-out endpoints are still to be implemented.
 - Add endpoints for completing account setup after Google verification,
-  username/password sign-in, Google sign-in, current-user lookup, and
-  sign-out.
+  Google sign-in, current-user lookup, and sign-out.
 - Validate all input on the backend and use parameterized SQL.
 - Add authenticated endpoints for reading and updating the user's favorites
   and reviews so data is scoped to the signed-in account.

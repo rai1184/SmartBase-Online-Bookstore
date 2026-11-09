@@ -1,12 +1,20 @@
 from contextlib import closing
+from datetime import datetime, timedelta, timezone
+import hashlib
+import re
+import secrets
 
 import mysql.connector
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, make_response, request
 from app.utils.queries import build_exact_query, build_alternative_query
+from werkzeug.security import check_password_hash
 
 from app.database.connection import get_db_connection
 
 api_v1 = Blueprint("api_v1", __name__)
+AUTH_SESSION_COOKIE = "smartbase_session"
+AUTH_SESSION_LIFETIME = timedelta(days=7)
+USERNAME_PATTERN = re.compile(r"^[A-Za-z0-9_]{3,20}$")
 
 
 @api_v1.get("/health")
@@ -17,6 +25,73 @@ def health_check():
             "message": "SmartBase Backend is running!",
         }
     )
+
+
+@api_v1.post("/auth/login")
+def login():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"message": "Username and password are required"}), 400
+
+    username = payload.get("username")
+    password = payload.get("password")
+    if (
+        not isinstance(username, str)
+        or not USERNAME_PATTERN.fullmatch(username)
+        or not isinstance(password, str)
+        or not 1 <= len(password) <= 128
+    ):
+        return jsonify({"message": "Username and password are required"}), 400
+
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor()) as cursor:
+                cursor.execute(
+                    """
+                    SELECT user_id, username, password_hash
+                    FROM `User`
+                    WHERE username = %s
+                    """,
+                    (username,),
+                )
+                user = cursor.fetchone()
+
+            if user is None or not check_password_hash(user[2], password):
+                return jsonify({"message": "Invalid username or password"}), 401
+
+            session_token = secrets.token_urlsafe(32)
+            session_token_hash = hashlib.sha256(
+                session_token.encode("utf-8")
+            ).hexdigest()
+            expires_at = datetime.now(timezone.utc) + AUTH_SESSION_LIFETIME
+
+            with closing(connection.cursor()) as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO AuthSessions (session_token_hash, user_id, expires_at)
+                    VALUES (%s, %s, %s)
+                    """,
+                    (session_token_hash, user[0], expires_at.replace(tzinfo=None)),
+                )
+            connection.commit()
+    except (mysql.connector.Error, RuntimeError, ValueError):
+        current_app.logger.exception("Username/password login failed")
+        return jsonify({"message": "Login unavailable"}), 503
+
+    response = make_response(
+        jsonify({"user": {"user_id": user[0], "username": user[1]}})
+    )
+    response.set_cookie(
+        AUTH_SESSION_COOKIE,
+        session_token,
+        max_age=int(AUTH_SESSION_LIFETIME.total_seconds()),
+        httponly=True,
+        secure=current_app.config["AUTH_SESSION_COOKIE_SECURE"],
+        samesite="Lax",
+        path="/",
+    )
+    return response
+
 
 @api_v1.get("/health/database")
 def database_health_check():

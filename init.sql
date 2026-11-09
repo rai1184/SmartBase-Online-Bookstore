@@ -50,6 +50,16 @@ CREATE TABLE IF NOT EXISTS Favorites (
     FOREIGN KEY (isbn) REFERENCES Books(isbn) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS AuthSessions (
+    session_token_hash CHAR(64) NOT NULL PRIMARY KEY,
+    user_id INT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    expires_at DATETIME NOT NULL,
+    INDEX idx_auth_sessions_user_expires (user_id, expires_at),
+    INDEX idx_auth_sessions_expires (expires_at),
+    FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE
+);
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ==========================================

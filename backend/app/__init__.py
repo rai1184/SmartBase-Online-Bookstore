@@ -1,10 +1,23 @@
+import os
+
 from flask import Flask
 from flask_cors import CORS
 
 
 def create_app():
     app = Flask(__name__)
-    CORS(app)
+    app.config["AUTH_SESSION_COOKIE_SECURE"] = (
+        os.environ.get("AUTH_SESSION_COOKIE_SECURE", "false").lower() == "true"
+    )
+    origins = os.environ.get(
+        "FRONTEND_ORIGINS",
+        "http://localhost:5174,http://127.0.0.1:5174",
+    )
+    CORS(
+        app,
+        origins=[origin.strip() for origin in origins.split(",") if origin.strip()],
+        supports_credentials=True,
+    )
 
     from app.api.v1.routes import api_v1
 
