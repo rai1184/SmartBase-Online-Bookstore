@@ -8,7 +8,40 @@ with Google or with their username and bookstore password. Authentication
 should be validated by Flask and persist through a secure server-managed
 session.
 
-This document is a plan only; it does not implement authentication.
+This document tracks the authentication plan, completed work, and remaining
+steps.
+
+## Current progress
+
+- The Google Cloud project `SmartBase-Online-Bookstore` has been created and
+  selected.
+- Google Auth Platform branding/consent setup is complete. The app is External
+  and remains in Testing mode; a test user has been added.
+- A Web application OAuth client named `SmartBase local web` was created with
+  `http://localhost:5174` as an authorized JavaScript origin. No redirect URI
+  was added because the planned browser flow uses a Google ID token.
+- The client ID was created, but its value is intentionally not recorded here.
+  Do not put a client secret in this repository. The planned ID-token
+  verification flow uses the client ID as the token audience and does not
+  require a client secret.
+- The original database migration and the `AuthSessions` table migration have
+  been run and verified on `smartbase_db`.
+- Flask username/password login, current-session lookup, and logout endpoints
+  are implemented and covered by backend tests. The React app is not yet
+  connected to them.
+- Google token verification and account creation are not implemented yet.
+- `google-auth` has now been installed into the backend virtual environment.
+  The first attempt using `backend/venv/bin/python -m pip` failed because this
+  project creates its virtual environment with `--without-pip`. The successful
+  command used the system Python's pip launcher:
+
+  ```bash
+  python3 -m pip --python backend/venv/bin/python install google-auth
+  ```
+
+- `scripts/dev-tasks.sh` now checks for `google.auth` and includes `google-auth`
+  in the dependency installation command, so `devup` will restore it if the
+  backend virtual environment is recreated.
 
 ## Proposed account behavior
 
@@ -82,8 +115,19 @@ need email verification.
 - Implemented `GET /api/auth/me` to return the account associated with a valid,
   unexpired session cookie, and `POST /api/auth/logout` to revoke the session
   and clear the cookie. The React app is not yet connected to these endpoints.
-- Add endpoints for completing account setup after Google verification,
-  Google sign-in, current-user lookup, and sign-out.
+- Next: implement and test the Google ID-token verification endpoint using the
+  installed `google-auth` dependency.
+- Add an endpoint that accepts a Google ID token and verifies it on the
+  backend, including its signature, audience (the OAuth client ID), issuer,
+  expiry, and verified-email claim.
+- For an existing Google subject, create the normal server session and return
+  the account. For a new verified Google identity, do not create an account
+  yet; return a short-lived, signed account-setup token so the user can choose
+  a unique username and app password.
+- Add the account-setup endpoint. It must validate that token, validate the
+  username and 12–128-character app password, hash the password, and create
+  the account with Google's verified email, stable subject, and optional
+  display name. Then create the server session.
 - Validate all input on the backend and use parameterized SQL.
 - Add authenticated endpoints for reading and updating the user's favorites
   and reviews so data is scoped to the signed-in account.
@@ -114,15 +158,18 @@ need email verification.
 
 ### 5. Test, configure, and document
 
-- Add backend tests for registration, duplicate accounts, password handling,
-  valid and invalid sign-in, Google verification outcomes, current-user
-  lookup, sign-out, and session behavior.
+- Backend tests already cover username/password login, current-session lookup,
+  logout, and relevant failure cases. Add tests for Google token verification,
+  unverified email, wrong audience/issuer/expiry, new-account setup, duplicate
+  usernames, and Google sign-in for existing accounts.
 - Add frontend checks or tests for form modes, validation, error states, and
   session restoration.
 - Verify the database migration with existing sample data.
-- Document Google Identity configuration, allowed origins, redirect settings
-  if used, and required environment variables. Keep any client secret required
-  by the chosen flow on the backend; do not commit secrets.
+- The local Google JavaScript origin is configured as
+  `http://localhost:5174`; add the production frontend origin to the Google
+  OAuth client before deployment. No redirect URI is currently used.
+- Document required environment variables and keep credentials out of Git.
+  The planned ID-token flow does not use a client secret.
 - Run the relevant backend tests, frontend lint/build, and the project's
   existing checks.
 

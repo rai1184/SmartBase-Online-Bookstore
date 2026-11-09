@@ -14,9 +14,9 @@ case "$COMMAND" in
         rm -rf venv
         python3 -m venv --without-pip venv
     fi
-    if ! venv/bin/python -c "import flask, flask_cors, mysql.connector" >/dev/null 2>&1; then
+    if ! venv/bin/python -c "import flask, flask_cors, mysql.connector, google.auth" >/dev/null 2>&1; then
         echo "Installing backend dependencies..."
-        python3 -m pip --python venv/bin/python install Flask flask-cors mysql-connector-python
+        python3 -m pip --python venv/bin/python install Flask flask-cors mysql-connector-python google-auth
     fi
 
     # 2. Install frontend dependencies before starting the backend
