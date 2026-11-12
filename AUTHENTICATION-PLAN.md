@@ -26,12 +26,15 @@ steps.
   require a client secret.
 - The client ID is configured as `GOOGLE_CLIENT_ID` in the Compose `app`
   service environment so Flask can use it when verifying Google ID tokens.
+- `AUTH_SETUP_TOKEN_SECRET` is passed to the Compose app from the host
+  environment. Set it to a private, randomly generated value before using
+  Google sign-in for new accounts; it signs short-lived account-setup tokens.
 - The original database migration and the `AuthSessions` table migration have
   been run and verified on `smartbase_db`.
 - Flask username/password login, current-session lookup, and logout endpoints
   are implemented and covered by backend tests. The React app is not yet
   connected to them.
-- Google token verification and account creation are not implemented yet.
+- Account creation is not implemented yet.
 - `google-auth` has now been installed into the backend virtual environment.
   The first attempt using `backend/venv/bin/python -m pip` failed because this
   project creates its virtual environment with `--without-pip`. The successful
@@ -117,19 +120,16 @@ need email verification.
 - Implemented `GET /api/auth/me` to return the account associated with a valid,
   unexpired session cookie, and `POST /api/auth/logout` to revoke the session
   and clear the cookie. The React app is not yet connected to these endpoints.
-- Next: implement and test the Google ID-token verification endpoint using the
-  installed `google-auth` dependency.
-- Add an endpoint that accepts a Google ID token and verifies it on the
-  backend, including its signature, audience (the OAuth client ID), issuer,
-  expiry, and verified-email claim.
-- For an existing Google subject, create the normal server session and return
-  the account. For a new verified Google identity, do not create an account
-  yet; return a short-lived, signed account-setup token so the user can choose
-  a unique username and app password.
-- Add the account-setup endpoint. It must validate that token, validate the
-  username and 12–128-character app password, hash the password, and create
-  the account with Google's verified email, stable subject, and optional
-  display name. Then create the server session.
+- Implemented and tested `POST /api/auth/google` using `google-auth`. It
+  verifies the token signature, audience, issuer, expiry, and verified-email
+  claim. Existing Google subjects receive a server session; new identities
+  receive a short-lived signed account-setup token. The app needs
+  `AUTH_SETUP_TOKEN_SECRET` configured for new identities. Do not commit the
+  secret to the repository.
+- Implemented and tested `POST /api/auth/account-setup`. It accepts an
+  unexpired signed setup token, validates the username and 12–128-character
+  app password, hashes the password, creates the account with Google's
+  verified email and stable subject, and starts a server session.
 - Validate all input on the backend and use parameterized SQL.
 - Add authenticated endpoints for reading and updating the user's favorites
   and reviews so data is scoped to the signed-in account.

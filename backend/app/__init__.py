@@ -6,6 +6,10 @@ from flask_cors import CORS
 
 def create_app():
     app = Flask(__name__)
+    app.config["GOOGLE_CLIENT_ID"] = os.environ.get("GOOGLE_CLIENT_ID")
+    app.config["AUTH_SETUP_TOKEN_SECRET"] = os.environ.get(
+        "AUTH_SETUP_TOKEN_SECRET"
+    )
     app.config["AUTH_SESSION_COOKIE_SECURE"] = (
         os.environ.get("AUTH_SESSION_COOKIE_SECURE", "false").lower() == "true"
     )
