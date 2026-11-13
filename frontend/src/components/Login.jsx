@@ -134,13 +134,10 @@ export default function Login({
   return (
     <main className="login-page">
       <form className="login-card" onSubmit={submit}>
-        <p className="section-label">SMARTBASE ACCOUNT</p>
         <h1>{mode === "setup" ? "Set up your account" : "Login"}</h1>
-        <p>
-          {mode === "setup"
-            ? "Choose a username and an app-specific password."
-            : "Sign in to manage favorites and reviews."}
-        </p>
+        {mode === "setup" && (
+          <p>Choose a username and an app-specific password.</p>
+        )}
 
         {sessionError && (
           <div className="auth-error" role="alert">
