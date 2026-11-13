@@ -13,7 +13,7 @@ class UsernamePasswordLoginTests(unittest.TestCase):
     def setUp(self):
         self.client = create_app().test_client()
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_valid_credentials_create_a_hashed_server_session(
         self, get_connection
     ):
@@ -62,7 +62,7 @@ class UsernamePasswordLoginTests(unittest.TestCase):
             session_cookie.value,
         )
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_valid_email_credentials_create_a_server_session(self, get_connection):
         cursor = get_connection.return_value.cursor.return_value
         cursor.fetchone.return_value = (
@@ -88,7 +88,7 @@ class UsernamePasswordLoginTests(unittest.TestCase):
         self.assertIn("username = %s OR user_email = %s", query)
         self.assertEqual(params, ("reader@example.com", "reader@example.com"))
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_invalid_credentials_return_generic_error_without_session(
         self, get_connection
     ):
@@ -113,7 +113,7 @@ class UsernamePasswordLoginTests(unittest.TestCase):
         self.assertEqual(cursor.execute.call_count, 1)
         get_connection.return_value.commit.assert_not_called()
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_unknown_username_has_same_generic_error(self, get_connection):
         cursor = get_connection.return_value.cursor.return_value
         cursor.fetchone.return_value = None
@@ -131,7 +131,7 @@ class UsernamePasswordLoginTests(unittest.TestCase):
         self.assertIsNone(response.headers.get("Set-Cookie"))
         cursor.execute.assert_called_once()
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_malformed_login_payload_is_rejected_before_database_access(
         self, get_connection
     ):
@@ -144,7 +144,7 @@ class UsernamePasswordLoginTests(unittest.TestCase):
         get_connection.assert_not_called()
 
     @patch(
-        "app.api.v1.routes.get_db_connection",
+        "app.api.v1.auth_routes.get_db_connection",
         side_effect=mysql.connector.Error("database details"),
     )
     def test_database_failure_returns_generic_error(self, _get_connection):
@@ -160,7 +160,7 @@ class UsernamePasswordLoginTests(unittest.TestCase):
     @patch.dict("os.environ", {"AUTH_SESSION_COOKIE_SECURE": "true"})
     def test_secure_cookie_can_be_enabled_for_https(self):
         client = create_app().test_client()
-        with patch("app.api.v1.routes.get_db_connection") as get_connection:
+        with patch("app.api.v1.auth_routes.get_db_connection") as get_connection:
             cursor = get_connection.return_value.cursor.return_value
             cursor.fetchone.return_value = (
                 7,
@@ -184,7 +184,7 @@ class AuthSessionEndpointTests(unittest.TestCase):
     def setUp(self):
         self.client = create_app().test_client()
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_current_session_returns_user_for_valid_cookie(self, get_connection):
         token = "valid-session-token"
         cursor = get_connection.return_value.cursor.return_value
@@ -206,7 +206,7 @@ class AuthSessionEndpointTests(unittest.TestCase):
             (hashlib.sha256(token.encode("utf-8")).hexdigest(),),
         )
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_current_session_rejects_missing_cookie_without_database_access(
         self, get_connection
     ):
@@ -216,7 +216,7 @@ class AuthSessionEndpointTests(unittest.TestCase):
         self.assertEqual(response.json, {"message": "Authentication required"})
         get_connection.assert_not_called()
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_current_session_clears_cookie_for_expired_or_unknown_token(
         self, get_connection
     ):
@@ -232,7 +232,7 @@ class AuthSessionEndpointTests(unittest.TestCase):
         self.assertIn("Max-Age=0", response.headers["Set-Cookie"])
 
     @patch(
-        "app.api.v1.routes.get_db_connection",
+        "app.api.v1.auth_routes.get_db_connection",
         side_effect=mysql.connector.Error("database details"),
     )
     def test_current_session_returns_service_error_on_database_failure(
@@ -248,7 +248,7 @@ class AuthSessionEndpointTests(unittest.TestCase):
         )
         self.assertNotIn("database details", response.get_data(as_text=True))
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_logout_deletes_server_session_and_clears_cookie(
         self, get_connection
     ):
@@ -270,7 +270,7 @@ class AuthSessionEndpointTests(unittest.TestCase):
         get_connection.return_value.commit.assert_called_once()
         self.assertIn("Max-Age=0", response.headers["Set-Cookie"])
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_logout_without_cookie_is_idempotent(self, get_connection):
         response = self.client.post("/api/auth/logout")
 
@@ -280,7 +280,7 @@ class AuthSessionEndpointTests(unittest.TestCase):
         get_connection.assert_not_called()
 
     @patch(
-        "app.api.v1.routes.get_db_connection",
+        "app.api.v1.auth_routes.get_db_connection",
         side_effect=mysql.connector.Error("database details"),
     )
     def test_logout_database_failure_does_not_claim_success(

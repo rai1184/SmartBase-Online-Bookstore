@@ -9,7 +9,7 @@ from itsdangerous import URLSafeTimedSerializer
 from werkzeug.security import check_password_hash
 
 from app import create_app
-from app.api.v1.routes import (
+from app.api.v1.auth_routes import (
     AUTH_SETUP_TOKEN_LIFETIME_SECONDS,
     AUTH_SETUP_TOKEN_SALT,
 )
@@ -33,8 +33,8 @@ class GoogleLoginTests(unittest.TestCase):
         claims.update(overrides)
         return claims
 
-    @patch("app.api.v1.routes.get_db_connection")
-    @patch("app.api.v1.routes.google_id_token.verify_oauth2_token")
+    @patch("app.api.v1.auth_routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.google_id_token.verify_oauth2_token")
     def test_existing_google_account_receives_server_session(
         self, verify_token, get_connection
     ):
@@ -76,8 +76,8 @@ class GoogleLoginTests(unittest.TestCase):
             session_params[0],
         )
 
-    @patch("app.api.v1.routes.get_db_connection")
-    @patch("app.api.v1.routes.google_id_token.verify_oauth2_token")
+    @patch("app.api.v1.auth_routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.google_id_token.verify_oauth2_token")
     def test_new_google_identity_receives_signed_setup_token_without_account(
         self, verify_token, get_connection
     ):
@@ -112,8 +112,8 @@ class GoogleLoginTests(unittest.TestCase):
         self.assertNotIn("INSERT INTO", query)
         self.assertIsNone(response.headers.get("Set-Cookie"))
 
-    @patch("app.api.v1.routes.get_db_connection")
-    @patch("app.api.v1.routes.google_id_token.verify_oauth2_token")
+    @patch("app.api.v1.auth_routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.google_id_token.verify_oauth2_token")
     def test_unverified_email_is_rejected(self, verify_token, get_connection):
         verify_token.return_value = self.google_claims(email_verified=False)
 
@@ -126,7 +126,7 @@ class GoogleLoginTests(unittest.TestCase):
         self.assertEqual(response.json, {"message": "Invalid Google credential"})
         get_connection.assert_not_called()
 
-    @patch("app.api.v1.routes.google_id_token.verify_oauth2_token")
+    @patch("app.api.v1.auth_routes.google_id_token.verify_oauth2_token")
     def test_invalid_google_credential_is_rejected(self, verify_token):
         verify_token.side_effect = ValueError("invalid signature")
 
@@ -139,7 +139,7 @@ class GoogleLoginTests(unittest.TestCase):
         self.assertEqual(response.json, {"message": "Invalid Google credential"})
         self.assertNotIn("invalid signature", response.get_data(as_text=True))
 
-    @patch("app.api.v1.routes.google_id_token.verify_oauth2_token")
+    @patch("app.api.v1.auth_routes.google_id_token.verify_oauth2_token")
     def test_google_verification_service_error_returns_unavailable(
         self, verify_token
     ):
@@ -158,7 +158,7 @@ class GoogleLoginTests(unittest.TestCase):
             {"message": "Google sign-in unavailable"},
         )
 
-    @patch("app.api.v1.routes.google_id_token.verify_oauth2_token")
+    @patch("app.api.v1.auth_routes.google_id_token.verify_oauth2_token")
     def test_missing_client_id_returns_unavailable_without_verifying(
         self, verify_token
     ):
@@ -172,7 +172,7 @@ class GoogleLoginTests(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         verify_token.assert_not_called()
 
-    @patch("app.api.v1.routes.google_id_token.verify_oauth2_token")
+    @patch("app.api.v1.auth_routes.google_id_token.verify_oauth2_token")
     def test_missing_id_token_is_rejected_before_verification(self, verify_token):
         response = self.client.post("/api/auth/google", json={})
 
@@ -200,7 +200,7 @@ class GoogleAccountSetupTests(unittest.TestCase):
             }
         )
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_valid_setup_creates_hashed_account_and_session(self, get_connection):
         password = "a-long-app-password"
         cursor = get_connection.return_value.cursor.return_value
@@ -241,7 +241,7 @@ class GoogleAccountSetupTests(unittest.TestCase):
         self.assertTrue(cookie["smartbase_session"]["httponly"])
         get_connection.return_value.commit.assert_called_once()
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_invalid_setup_token_is_rejected_without_database_access(
         self, get_connection
     ):
@@ -261,7 +261,7 @@ class GoogleAccountSetupTests(unittest.TestCase):
         )
         get_connection.assert_not_called()
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_invalid_username_and_password_are_rejected(self, get_connection):
         response = self.client.post(
             "/api/auth/account-setup",
@@ -279,7 +279,7 @@ class GoogleAccountSetupTests(unittest.TestCase):
         )
         get_connection.assert_not_called()
 
-    @patch("app.api.v1.routes.get_db_connection")
+    @patch("app.api.v1.auth_routes.get_db_connection")
     def test_duplicate_account_data_returns_generic_conflict(self, get_connection):
         cursor = get_connection.return_value.cursor.return_value
         cursor.execute.side_effect = mysql.connector.IntegrityError(
@@ -304,7 +304,7 @@ class GoogleAccountSetupTests(unittest.TestCase):
         get_connection.return_value.commit.assert_not_called()
 
     @patch(
-        "app.api.v1.routes.get_db_connection",
+        "app.api.v1.auth_routes.get_db_connection",
         side_effect=mysql.connector.Error("database detail"),
     )
     def test_database_failure_returns_generic_error(self, _get_connection):

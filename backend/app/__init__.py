@@ -23,7 +23,9 @@ def create_app():
         supports_credentials=True,
     )
 
+    from app.api.v1.auth_routes import auth_v1
     from app.api.v1.routes import api_v1
 
     app.register_blueprint(api_v1, url_prefix="/api")
+    app.register_blueprint(auth_v1, url_prefix="/api")
     return app
