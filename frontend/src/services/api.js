@@ -2,6 +2,67 @@ import { formatBook } from "../utils/formatters";
 
 const API_BASE_URL = "http://localhost:5001/api";
 
+class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+async function authRequest(path, body) {
+  const response = await fetch(`${API_BASE_URL}/auth/${path}`, {
+    method: body === undefined ? "GET" : "POST",
+    credentials: "include",
+    headers: body === undefined ? undefined : { "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new ApiError(
+      data.message || `Authentication request failed (HTTP ${response.status}).`,
+      response.status,
+    );
+  }
+
+  return data;
+}
+
+export async function loginApi(username, password) {
+  const data = await authRequest("login", { username, password });
+  return data.user;
+}
+
+export function googleLoginApi(idToken) {
+  return authRequest("google", { id_token: idToken });
+}
+
+export async function accountSetupApi(accountSetupToken, username, password) {
+  const data = await authRequest("account-setup", {
+    account_setup_token: accountSetupToken,
+    username,
+    password,
+  });
+  return data.user;
+}
+
+export async function getCurrentUserApi() {
+  try {
+    const data = await authRequest("me");
+    return data.user;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export function logoutApi() {
+  return authRequest("logout", {});
+}
+
 // Returns all books from DB
 export async function fetchBooksFromApi() {
   const response = await fetch(`${API_BASE_URL}/books`);

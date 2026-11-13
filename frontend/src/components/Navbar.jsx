@@ -3,8 +3,8 @@ export default function Navbar({
   setPage,
   user,
   logout,
+  authLoading,
   favoriteCount,
-  backendStatus,
 }) {
   return (
     <header className="navbar">
@@ -40,11 +40,13 @@ export default function Navbar({
         {user ? (
           <>
             <span className="username">
-              Hi, {user.name}
+              Hi, {user.username}
             </span>
 
             <button onClick={logout}>Logout</button>
           </>
+        ) : authLoading ? (
+          <span className="username" role="status">Checking session...</span>
         ) : (
           <button
             className={page === "login" ? "active" : ""}
