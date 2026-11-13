@@ -63,6 +63,32 @@ class UsernamePasswordLoginTests(unittest.TestCase):
         )
 
     @patch("app.api.v1.routes.get_db_connection")
+    def test_valid_email_credentials_create_a_server_session(self, get_connection):
+        cursor = get_connection.return_value.cursor.return_value
+        cursor.fetchone.return_value = (
+            7,
+            "book_reader",
+            generate_password_hash("correct horse battery staple"),
+        )
+
+        response = self.client.post(
+            "/api/auth/login",
+            json={
+                "username": "reader@example.com",
+                "password": "correct horse battery staple",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json,
+            {"user": {"user_id": 7, "username": "book_reader"}},
+        )
+        query, params = cursor.execute.call_args_list[0].args
+        self.assertIn("username = %s OR user_email = %s", query)
+        self.assertEqual(params, ("reader@example.com", "reader@example.com"))
+
+    @patch("app.api.v1.routes.get_db_connection")
     def test_invalid_credentials_return_generic_error_without_session(
         self, get_connection
     ):
@@ -79,7 +105,10 @@ class UsernamePasswordLoginTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.json, {"message": "Invalid username or password"})
+        self.assertEqual(
+            response.json,
+            {"message": "Invalid username/email or password"},
+        )
         self.assertIsNone(response.headers.get("Set-Cookie"))
         self.assertEqual(cursor.execute.call_count, 1)
         get_connection.return_value.commit.assert_not_called()
@@ -95,7 +124,10 @@ class UsernamePasswordLoginTests(unittest.TestCase):
         )
 
         self.assertEqual(response.status_code, 401)
-        self.assertEqual(response.json, {"message": "Invalid username or password"})
+        self.assertEqual(
+            response.json,
+            {"message": "Invalid username/email or password"},
+        )
         self.assertIsNone(response.headers.get("Set-Cookie"))
         cursor.execute.assert_called_once()
 
@@ -105,7 +137,7 @@ class UsernamePasswordLoginTests(unittest.TestCase):
     ):
         response = self.client.post(
             "/api/auth/login",
-            json={"username": "invalid username", "password": ""},
+            json={"username": "", "password": ""},
         )
 
         self.assertEqual(response.status_code, 400)

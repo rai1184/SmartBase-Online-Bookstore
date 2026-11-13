@@ -102,17 +102,21 @@ def health_check():
 def login():
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
-        return jsonify({"message": "Username and password are required"}), 400
+        return jsonify(
+            {"message": "Username or email and password are required"}
+        ), 400
 
     username = payload.get("username")
     password = payload.get("password")
     if (
         not isinstance(username, str)
-        or not USERNAME_PATTERN.fullmatch(username)
+        or not 1 <= len(username) <= 255
         or not isinstance(password, str)
         or not 1 <= len(password) <= 128
     ):
-        return jsonify({"message": "Username and password are required"}), 400
+        return jsonify(
+            {"message": "Username or email and password are required"}
+        ), 400
 
     try:
         with closing(get_db_connection()) as connection:
@@ -121,14 +125,16 @@ def login():
                     """
                     SELECT user_id, username, password_hash
                     FROM `User`
-                    WHERE username = %s
+                    WHERE username = %s OR user_email = %s
                     """,
-                    (username,),
+                    (username, username),
                 )
                 user = cursor.fetchone()
 
             if user is None or not check_password_hash(user[2], password):
-                return jsonify({"message": "Invalid username or password"}), 401
+                return jsonify(
+                    {"message": "Invalid username/email or password"}
+                ), 401
 
             session_token = _create_auth_session(connection, user[0])
     except (mysql.connector.Error, RuntimeError, ValueError):

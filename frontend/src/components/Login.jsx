@@ -155,15 +155,13 @@ export default function Login({
         {mode === "login" ? (
           <>
             <label>
-              Username
+              Username or email
               <input
                 type="text"
                 value={username}
                 onChange={(event) => setUsername(event.target.value)}
-                placeholder="Your username"
-                minLength={3}
-                maxLength={20}
-                pattern="[A-Za-z0-9_]{3,20}"
+                placeholder="Your username or email"
+                maxLength={255}
                 autoComplete="username"
                 required
               />
