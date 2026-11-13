@@ -18,6 +18,7 @@ services:
       - MYSQL_PASSWORD=secret
       - MYSQL_DATABASE=smartbase_db
       - GOOGLE_CLIENT_ID=141600577457-u7bhodqi9nt2l1dufui3tlnldjvvpblh.apps.googleusercontent.com
+      - VITE_GOOGLE_CLIENT_ID=141600577457-u7bhodqi9nt2l1dufui3tlnldjvvpblh.apps.googleusercontent.com
       - AUTH_SETUP_TOKEN_SECRET=${AUTH_SETUP_TOKEN_SECRET:-}
     depends_on:
       db:

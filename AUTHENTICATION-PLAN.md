@@ -26,15 +26,20 @@ steps.
   require a client secret.
 - The client ID is configured as `GOOGLE_CLIENT_ID` in the Compose `app`
   service environment so Flask can use it when verifying Google ID tokens.
+- The same public client ID is exposed to Vite as
+  `VITE_GOOGLE_CLIENT_ID` for the Google Identity Services button. Set this
+  variable to the matching OAuth client ID for other frontend environments.
 - `AUTH_SETUP_TOKEN_SECRET` is passed to the Compose app from the host
   environment. Set it to a private, randomly generated value before using
   Google sign-in for new accounts; it signs short-lived account-setup tokens.
 - The original database migration and the `AuthSessions` table migration have
   been run and verified on `smartbase_db`.
 - Flask username/password login, current-session lookup, and logout endpoints
-  are implemented and covered by backend tests. The React app is not yet
-  connected to them.
-- Account creation is not implemented yet.
+  are implemented and covered by backend tests. The React app now calls these
+  endpoints and restores authentication from the server session.
+- Google sign-in and token-based account setup are connected to the React app.
+- Account creation is implemented for new Google identities; direct
+  password-only registration is intentionally outside the initial flow.
 - `google-auth` has now been installed into the backend virtual environment.
   The first attempt using `backend/venv/bin/python -m pip` failed because this
   project creates its virtual environment with `--without-pip`. The successful
@@ -146,14 +151,14 @@ need email verification.
 
 ### 4. Implement the React account experience
 
-- Replace the current mock login form with sign-in and signup modes.
-- Provide username/password sign-in and a Google sign-in option. For a new
-  Google identity, show an account-setup page for a username and
-  app-specific password; do not ask the user to re-enter the Google email.
-- Show validation errors, backend errors, and loading/success states.
+- Replaced the mock identity form with username/password sign-in and Google
+  sign-in. New Google identities are routed to account setup for a username
+  and app-specific password; the verified Google email is not re-entered.
+- Added client-side input constraints, backend error messages, and loading
+  states for sign-in and account setup.
 - On app startup, ask Flask for the current session instead of treating
-  `localStorage` user data as proof of authentication.
-- Update logout and account display to use the backend session.
+  browser storage as proof of authentication.
+- Logout and account display now use the backend session.
 - Load and save favorites and reviews through the authenticated API so they
   follow the user across devices.
 - Preserve the existing logged-out experience and book browsing.

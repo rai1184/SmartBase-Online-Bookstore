@@ -8,7 +8,16 @@ import BookCard from "./components/BookCard";
 import FeaturedBooks from "./components/FeaturedBooks";
 import Login from "./components/Login";
 
-import { fetchBooksFromApi, searchBooksApi, checkHealthApi } from "./services/api";
+import {
+  accountSetupApi,
+  checkHealthApi,
+  fetchBooksFromApi,
+  getCurrentUserApi,
+  googleLoginApi,
+  loginApi,
+  logoutApi,
+  searchBooksApi,
+} from "./services/api";
 
 function App() {
   const [page, setPage] = useState("home");
@@ -22,10 +31,9 @@ function App() {
   const [exactMatches, setExactMatches] = useState([]);
   const [alternativeMatches, setAlternativeMatches] = useState([]);
 
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem("smartbase-user");
-    return stored ? JSON.parse(stored) : null;
-  });
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [sessionError, setSessionError] = useState("");
 
   const [favorites, setFavorites] = useState(() => {
     const stored = localStorage.getItem("smartbase-favorites");
@@ -45,6 +53,44 @@ function App() {
       .then(setBooks)
       .catch((error) => setBooksError(error.message))
       .finally(() => setBooksLoading(false));
+  }, []);
+
+  const restoreSession = useCallback(async () => {
+    setAuthLoading(true);
+    setSessionError("");
+    try {
+      setUser(await getCurrentUserApi());
+      setSessionError("");
+    } catch (error) {
+      setUser(null);
+      setSessionError(error.message);
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    getCurrentUserApi()
+      .then((account) => {
+        if (active) {
+          setUser(account);
+          setSessionError("");
+        }
+      })
+      .catch((error) => {
+        if (active) {
+          setUser(null);
+          setSessionError(error.message);
+        }
+      })
+      .finally(() => {
+        if (active) setAuthLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -128,7 +174,7 @@ function App() {
     }
 
     setReviews((current) => {
-      const newReview = { name: user.name, score, text };
+      const newReview = { name: user.username, score, text };
       const updated = {
         ...current,
         [isbn]: [...(current[isbn] || []), newReview],
@@ -139,18 +185,45 @@ function App() {
     });
   };
 
-  const login = (name, email) => {
-    const account = { name, email };
+  const login = useCallback(async (username, password) => {
+    const account = await loginApi(username, password);
     setUser(account);
-    localStorage.setItem("smartbase-user", JSON.stringify(account));
+    setSessionError("");
     setPage("home");
-  };
+  }, []);
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("smartbase-user");
+  const googleLogin = useCallback(async (idToken) => {
+    const result = await googleLoginApi(idToken);
+    if (result.user) {
+      setUser(result.user);
+      setSessionError("");
+      setPage("home");
+    } else if (
+      result.account_setup_required !== true ||
+      typeof result.account_setup_token !== "string"
+    ) {
+      throw new Error("The Google sign-in response was incomplete.");
+    }
+    return result;
+  }, []);
+
+  const completeAccountSetup = useCallback(async (setupToken, username, password) => {
+    const account = await accountSetupApi(setupToken, username, password);
+    setUser(account);
+    setSessionError("");
     setPage("home");
-  };
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await logoutApi();
+      setUser(null);
+      setSessionError("");
+      setPage("home");
+    } catch (error) {
+      setSessionError(error.message);
+    }
+  }, []);
 
   const favoriteBooks = books.filter((book) => favorites.includes(book.ISBN));
 
@@ -161,9 +234,13 @@ function App() {
         setPage={setPage}
         user={user}
         logout={logout}
+        authLoading={authLoading}
         favoriteCount={favorites.length}
         backendStatus={backendStatus}
       />
+      {user && sessionError && (
+        <p className="auth-global-error" role="alert">{sessionError}</p>
+      )}
 
       {page === "home" && (
         <main>
@@ -258,7 +335,16 @@ function App() {
       )}
 
       {page === "login" && (
-        <Login user={user} login={login} logout={logout} />
+        <Login
+          user={user}
+          login={login}
+          googleLogin={googleLogin}
+          completeAccountSetup={completeAccountSetup}
+          logout={logout}
+          sessionError={sessionError}
+          retrySession={restoreSession}
+          authLoading={authLoading}
+        />
       )}
 
       <footer>
