@@ -48,15 +48,22 @@ export default function Navbar({
         ) : authLoading ? (
           <span className="username" role="status">Checking session...</span>
         ) : (
-          <button
-            className={page === "login" ? "active" : ""}
-            onClick={() => setPage("login")}
-          >
-            Login
-          </button>
+          <>
+            <button
+              className={page === "login" ? "active" : ""}
+              onClick={() => setPage("login")}
+            >
+              Login
+            </button>
+            <button
+              className={page === "register" ? "active" : ""}
+              onClick={() => setPage("register")}
+            >
+              Register
+            </button>
+          </>
         )}
       </nav>
-
     </header>
   );
 }

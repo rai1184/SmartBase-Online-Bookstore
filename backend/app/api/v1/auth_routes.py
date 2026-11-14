@@ -383,3 +383,52 @@ def logout():
         samesite="Lax",
     )
     return response
+
+# Endpoint for registration
+@auth_v1.post("/auth/register")
+def register():
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"message": "Registration details are required"}), 400
+
+    username = payload.get("username")
+    email = payload.get("email")
+    password = payload.get("password")
+
+    # Validate inputs
+    if (
+        not isinstance(username, str)
+        or not USERNAME_PATTERN.fullmatch(username)
+        or not isinstance(email, str)
+        or not 1 <= len(email) <= 255
+        or not isinstance(password, str)
+        or not 12 <= len(password) <= 128
+    ):
+        return jsonify({"message": "Invalid registration details"}), 400
+
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor()) as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO `User` (username, user_email, password_hash, google_sub)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (
+                        username,
+                        email,
+                        generate_password_hash(password),
+                        None,  # Local registration leaves google_sub as NULL
+                    ),
+                )
+                connection.commit()
+                user = (cursor.lastrowid, username)
+
+            session_token = _create_auth_session(connection, user[0])
+    except mysql.connector.IntegrityError:
+        return jsonify({"message": "Username or email already exists"}), 409
+    except (mysql.connector.Error, RuntimeError, ValueError):
+        current_app.logger.exception("Registration failed")
+        return jsonify({"message": "Registration unavailable"}), 503
+
+    return _session_response(user, session_token), 201
