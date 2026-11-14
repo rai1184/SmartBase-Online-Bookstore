@@ -1,6 +1,6 @@
 import { formatBook } from "../utils/formatters";
 
-const API_BASE_URL = "http://localhost:5001/api";
+const API_BASE_URL = "/api";
 
 class ApiError extends Error {
   constructor(message, status) {
@@ -31,6 +31,11 @@ async function authRequest(path, body) {
 
 export async function loginApi(username, password) {
   const data = await authRequest("login", { username, password });
+  return data.user;
+}
+
+export async function registerApi(username, email, password) {
+  const data = await authRequest("register", { username, email, password });
   return data.user;
 }
 

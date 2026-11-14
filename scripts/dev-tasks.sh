@@ -26,26 +26,8 @@ case "$COMMAND" in
         npm install
     fi
 
-    # 3. Initialize the schema when the persistent database is empty
+    # 3. Database initialization is now handled automatically by Python on Flask startup!
     cd ..
-    DATABASE_TABLES=$(MYSQL_PWD="$MYSQL_PASSWORD" mysql \
-        --host="$MYSQL_HOST" \
-        --user="$MYSQL_USER" \
-        --database="$MYSQL_DATABASE" \
-        --batch \
-        --skip-column-names \
-        --execute="SHOW TABLES")
-    if [ -z "$DATABASE_TABLES" ]; then
-        echo "Initializing the empty database from init.sql..."
-        MYSQL_PWD="$MYSQL_PASSWORD" mysql \
-            --host="$MYSQL_HOST" \
-            --user="$MYSQL_USER" \
-            "$MYSQL_DATABASE" < init.sql
-    elif ! printf '%s\n' "$DATABASE_TABLES" | grep -Fxq "Books"; then
-        echo "Database has tables but is missing Books; refusing to import seed data automatically."
-        echo "Inspect the database and apply the required schema changes manually."
-        exit 1
-    fi
 
     # 4. Run backend in background and start Vite
     cd backend

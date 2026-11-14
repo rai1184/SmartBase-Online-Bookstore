@@ -2,6 +2,7 @@ import os
 
 from flask import Flask
 from flask_cors import CORS
+from app.utils.seed_db import initialize_database
 
 
 def create_app():
@@ -28,4 +29,12 @@ def create_app():
 
     app.register_blueprint(api_v1, url_prefix="/api")
     app.register_blueprint(auth_v1, url_prefix="/api")
+
+    # Automatically initialize tables, alter columns, and seed books/genres on startup
+    with app.app_context():
+        try:
+            initialize_database()
+        except Exception as e:
+            app.logger.error(f"Startup database initialization failed: {e}")
+            
     return app
