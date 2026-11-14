@@ -1,7 +1,7 @@
 def build_exact_query(title, author, genre, max_price, min_rating, publication_year):
     # Base SQL query structure
     # Join books with genres so we can get the genre name
-    # Join books with reviews so we can use the average function to get the avg review score
+    # Join books with reviews so we can use the average and count functions
     base_select = """
     SELECT
             Books.isbn,
@@ -11,7 +11,9 @@ def build_exact_query(title, author, genre, max_price, min_rating, publication_y
             Books.msrp,
             Books.publication_date,
             Genres.genre_name,
-            AVG(Reviews.review_score) AS avg_rating
+            AVG(Reviews.review_score) AS avg_rating,
+            COUNT(Reviews.review_score) AS review_count,
+            Books.cover_image
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
         LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
@@ -71,7 +73,9 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
             Books.msrp,
             Books.publication_date,
             Genres.genre_name,
-            AVG(Reviews.review_score) AS avg_rating
+            AVG(Reviews.review_score) AS avg_rating,
+            COUNT(Reviews.review_score) AS review_count,
+            Books.cover_image
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
         LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
@@ -80,7 +84,7 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
     query = base_select + " WHERE 1=1"
     params = []
 
-    # Only filter if present AND the user did NOT relaxs search
+    # Only filter if present AND the user did NOT relax search
     if title and not r_title:
         query += " AND Books.title LIKE %s"
         params.append(f"%{title}%")
@@ -117,4 +121,23 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
             pass
 
     query += " ORDER BY Books.title"
+    return query, params
+
+def build_insert_review_query(isbn, rating, comment, username):
+    """
+    Constructs the SQL query and parameters for inserting a new book review.
+    """
+    query = """
+        INSERT INTO Reviews (isbn, review_score, comment, username)
+        VALUES (%s, %s, %s, %s)
+    """
+    
+    # Safe type casting for the review score
+    try:
+        score = float(rating)
+    except (ValueError, TypeError):
+        score = 0.0
+
+    params = (isbn, score, comment, username)
+    
     return query, params

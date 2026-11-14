@@ -6,7 +6,16 @@ from app.utils.seed_db import initialize_database
 
 
 def create_app():
-    app = Flask(__name__)
+    # Get the absolute path of the current file to support serving book images
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    images_dir = os.path.abspath(os.path.join(basedir, "../../images"))
+
+    app = Flask(
+        __name__,
+        static_folder=images_dir,
+        static_url_path="/images"
+    )
+
     app.config["GOOGLE_CLIENT_ID"] = os.environ.get("GOOGLE_CLIENT_ID")
     app.config["AUTH_SETUP_TOKEN_SECRET"] = os.environ.get(
         "AUTH_SETUP_TOKEN_SECRET"
