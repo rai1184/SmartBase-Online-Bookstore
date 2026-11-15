@@ -7,6 +7,7 @@ export default function BookCard({
   toggleFavorite,
   reviews = [],
   addReview,
+  onSelect,
   user,
 }) {
   const [showReview, setShowReview] = useState(false);
@@ -15,23 +16,17 @@ export default function BookCard({
 
   const submitReview = (event) => {
     event.preventDefault();
+    event.stopPropagation();
 
-    if (!reviewText.trim()) {
-      return;
-    }
+    if (!reviewText.trim()) return;
 
-    addReview(
-      book.ISBN,
-      Number(reviewScore),
-      reviewText.trim()
-    );
+    addReview(book.ISBN, Number(reviewScore), reviewText.trim());
 
     setReviewText("");
     setReviewScore("5");
     setShowReview(false);
   };
 
-  // Determine review count and rating formatted string
   const totalReviews = book.ReviewCount ?? reviews.length;
   const ratingDisplay =
     book.Rating != null && book.Rating > 0
@@ -39,28 +34,18 @@ export default function BookCard({
       : "Not rated";
 
   return (
-    <article className="book-card">
-      <div className="card-top">
+    <article className="book-card clickable" onClick={onSelect}>
+      <div className="card-top" onClick={(e) => e.stopPropagation()}>
         <div>
           {type === "exact" && (
-            <span className="exact-badge">
-              Exact Match
-            </span>
+            <span className="exact-badge">Exact Match</span>
           )}
         </div>
 
         <button
-          className={
-            favorite
-              ? "heart favorite"
-              : "heart"
-          }
+          className={favorite ? "heart favorite" : "heart"}
           onClick={() => toggleFavorite(book.ISBN)}
-          title={
-            favorite
-              ? "Remove from favorites"
-              : "Add to favorites"
-          }
+          title={favorite ? "Remove from favorites" : "Add to favorites"}
         >
           {favorite ? "♥" : "♡"}
         </button>
@@ -71,54 +56,34 @@ export default function BookCard({
         <img 
           src={book.CoverImage ? `/images/books/${book.CoverImage}` : "/images/books/default-cover.jpg"} 
           className="book-cover-image"
+          alt={book.Title}
         />
       </div>
       
-      <div className="book-information">
+      <div className="book-information" onClick={(e) => e.stopPropagation()}>
         <h3>{book.Title}</h3>
-
-        <p className="book-author">
-          by {book.Author}
-        </p>
+        <p className="book-author">by {book.Author}</p>
 
         {book.About && (
-          <p className="book-description">
-            {book.About}
-          </p>
+          <p className="book-description">{book.About}</p>
         )}
 
         <div className="book-tags">
           <span>{book.Genre}</span>
           {book.Pages && <span>{book.Pages} pages</span>}
-          {book.PublicationYear && (
-            <span>{book.PublicationYear}</span>
-          )}
+          {book.PublicationYear && <span>{book.PublicationYear}</span>}
         </div>
 
         <div className="book-price-row">
-          <strong>
-            ${book.MSRP ? book.MSRP.toFixed(2) : "0.00"}
-          </strong>
-
-          <span>
-            {ratingDisplay}
-          </span>
+          <strong>${book.MSRP ? book.MSRP.toFixed(2) : "0.00"}</strong>
+          <span>{ratingDisplay}</span>
         </div>
 
-        <p className="isbn">
-          ISBN: {book.ISBN}
-        </p>
+        <p className="isbn">ISBN: {book.ISBN}</p>
 
         <div className="review-header">
-          <span>
-            {totalReviews} review{totalReviews === 1 ? "" : "s"}
-          </span>
-
-          <button
-            onClick={() =>
-              setShowReview(!showReview)
-            }
-          >
+          <span>{totalReviews} review{totalReviews === 1 ? "" : "s"}</span>
+          <button onClick={() => setShowReview(!showReview)}>
             {showReview ? "Cancel" : "Write Review"}
           </button>
         </div>
@@ -126,14 +91,8 @@ export default function BookCard({
         {reviews.length > 0 && (
           <div className="review-list">
             {reviews.slice(-2).map((review, index) => (
-              <div
-                className="review"
-                key={`${review.name}-${index}`}
-              >
-                <strong>
-                  {review.name} · ★ {review.score}
-                </strong>
-
+              <div className="review" key={`${review.name}-${index}`}>
+                <strong>{review.name} · ★ {review.score}</strong>
                 <p>{review.text}</p>
               </div>
             ))}
@@ -141,21 +100,14 @@ export default function BookCard({
         )}
 
         {showReview && (
-          <form
-            className="review-form"
-            onSubmit={submitReview}
-          >
+          <form className="review-form" onSubmit={submitReview}>
             {!user && (
-              <p className="warning">
-                Please login before submitting a review.
-              </p>
+              <p className="warning">Please login before submitting a review.</p>
             )}
 
             <select
               value={reviewScore}
-              onChange={(event) =>
-                setReviewScore(event.target.value)
-              }
+              onChange={(event) => setReviewScore(event.target.value)}
             >
               <option value="5">5 stars</option>
               <option value="4">4 stars</option>
@@ -167,14 +119,10 @@ export default function BookCard({
             <textarea
               placeholder="Write your review..."
               value={reviewText}
-              onChange={(event) =>
-                setReviewText(event.target.value)
-              }
+              onChange={(event) => setReviewText(event.target.value)}
             />
 
-            <button type="submit">
-              Submit Review
-            </button>
+            <button type="submit">Submit Review</button>
           </form>
         )}
       </div>

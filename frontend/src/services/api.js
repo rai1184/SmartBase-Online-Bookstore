@@ -115,3 +115,11 @@ export async function checkHealthApi() {
   const data = await response.json();
   return data.message || "Online";
 }
+
+export async function fetchBookReviewsApi(isbn) {
+  const response = await fetch(`${API_BASE_URL}/books/${isbn}/reviews`);
+  if (!response.ok) {
+    throw new Error("Failed to load reviews for this book.");
+  }
+  return response.json();
+}

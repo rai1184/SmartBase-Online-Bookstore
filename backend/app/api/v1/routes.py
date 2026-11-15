@@ -215,3 +215,40 @@ def submit_review():
     except Exception as e:
         current_app.logger.exception("Review submission failed")
         return jsonify({"error": "Review submission unavailable"}), 503
+
+# Get all reviews for a book
+@api_v1.get("/books/<isbn>/reviews")
+def get_book_reviews(isbn):
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor(dictionary=True)) as cursor:
+                cursor.execute(
+                    """
+                    SELECT 
+                        r.review_id, 
+                        r.isbn, 
+                        r.user_id, 
+                        r.review_score AS score, 
+                        r.review_text AS text, 
+                        u.username AS name
+                    FROM Reviews r
+                    JOIN User u ON r.user_id = u.user_id
+                    WHERE r.isbn = %s
+                    """,
+                    (isbn,)
+                )
+                reviews = cursor.fetchall()
+        
+        # Map using the SQL aliases (name, score, text) and iterate over `reviews`
+        formatted_reviews = [
+            {
+                "name": row["name"],
+                "score": row["score"],
+                "text": row["text"],
+            }
+            for row in reviews
+        ]
+        return jsonify(formatted_reviews)
+    except Exception:
+        current_app.logger.exception("Failed to fetch book reviews")
+        return jsonify({"error": "Reviews unavailable"}), 503

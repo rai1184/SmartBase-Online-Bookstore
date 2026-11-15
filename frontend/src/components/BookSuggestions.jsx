@@ -9,93 +9,66 @@ export default function BookSuggestions({
   reviews,
   addReview,
   user,
+  onSelectBook,
 }) {
   if (!hasSearched) {
-    return (
-      <div className="empty-message">
-        Enter your search criteria above to start searching.
-      </div>
-    );
+    return null;
   }
 
   return (
     <div className="suggestions-section">
-      <div className="result-heading">
-        <div>
-          <p className="section-label">
-            SEARCH RESULTS
-          </p>
-
-          <h2>Exact Matches</h2>
-        </div>
-
-        <span className="result-count">
-          {exactMatches.length} found
-        </span>
-      </div>
-
-      {exactMatches.length === 0 ? (
-        <p className="empty-message">
-          No exact matches were found.
-        </p>
-      ) : (
-        <div className="book-grid">
-          {exactMatches.map((book) => (
-            <BookCard
-              key={book.ISBN}
-              book={book}
-              type="exact"
-              favorite={favorites.includes(book.ISBN)}
-              toggleFavorite={toggleFavorite}
-              reviews={reviews[book.ISBN] || []}
-              addReview={addReview}
-              user={user}
-            />
-          ))}
-        </div>
+      {exactMatches.length > 0 && (
+        <>
+          <div className="result-heading">
+            <h2>Exact Matches</h2>
+            <span className="result-count">{exactMatches.length} found</span>
+          </div>
+          <div className="book-grid">
+            {exactMatches.map((book) => (
+              <BookCard
+                key={book.ISBN}
+                book={book}
+                type="exact"
+                favorite={favorites.includes(book.ISBN)}
+                toggleFavorite={toggleFavorite}
+                reviews={reviews}
+                addReview={addReview}
+                user={user}
+                onSelect={() => onSelectBook(book)}
+              />
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="result-heading alternatives-heading">
-        <div>
-          <p className="section-label">
-            CONTEXTUAL SEARCH
-          </p>
+      {alternativeMatches.length > 0 && (
+        <>
+          <div className="result-heading alternatives-heading">
+            <h2>Relaxed Criteria Matches</h2>
+            <span className="result-count">{alternativeMatches.length} found</span>
+          </div>
+          <div className="book-grid">
+            {alternativeMatches.map((book) => (
+              <BookCard
+                key={book.ISBN}
+                book={book}
+                type="match"
+                favorite={favorites.includes(book.ISBN)}
+                toggleFavorite={toggleFavorite}
+                reviews={reviews}
+                addReview={addReview}
+                user={user}
+                onSelect={() => onSelectBook(book)}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
-          <h2>
-            Smart Alternative Suggestions
-          </h2>
-
-          <p className="section-description">
-            SmartBase relaxes selected search criteria to find
-            nearby alternatives when necessary.
-          </p>
-        </div>
-
-        <span className="result-count">
-          {alternativeMatches.length} suggested
-        </span>
-      </div>
-
-      {alternativeMatches.length === 0 ? (
-        <p className="empty-message">
-          No alternative suggestions are available with the
-          selected relaxation settings.
-        </p>
-      ) : (
-        <div className="book-grid">
-          {alternativeMatches.map((book) => (
-            <BookCard
-              key={book.ISBN}
-              book={book}
-              type="alternative"
-              similarityScore={book.similarityScore}
-              favorite={favorites.includes(book.ISBN)}
-              toggleFavorite={toggleFavorite}
-              reviews={reviews[book.ISBN] || []}
-              addReview={addReview}
-              user={user}
-            />
-          ))}
+      {exactMatches.length === 0 && alternativeMatches.length === 0 && (
+        <div className="empty-message">
+          <h3>No books found</h3>
+          <p>Try adjusting your search filters or relaxing more criteria.</p>
         </div>
       )}
     </div>

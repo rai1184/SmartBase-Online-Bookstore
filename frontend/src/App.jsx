@@ -7,6 +7,7 @@ import BookSuggestions from "./components/BookSuggestions";
 import BookCard from "./components/BookCard";
 import FeaturedBooks from "./components/FeaturedBooks";
 import Login from "./components/Login";
+import BookDetailModal from "./components/BookDetailModal";
 
 import {
   accountSetupApi,
@@ -41,6 +42,8 @@ function App() {
     return stored ? JSON.parse(stored) : [];
   });
 
+  const [selectedBook, setSelectedBook] = useState(null);
+
   const loadBooks = useCallback(() => {
     setBooksLoading(true);
     setBooksError("");
@@ -49,20 +52,6 @@ function App() {
       .then(setBooks)
       .catch((error) => setBooksError(error.message))
       .finally(() => setBooksLoading(false));
-  }, []);
-
-  const restoreSession = useCallback(async () => {
-    setAuthLoading(true);
-    setSessionError("");
-    try {
-      setUser(await getCurrentUserApi());
-      setSessionError("");
-    } catch (error) {
-      setUser(null);
-      setSessionError(error.message);
-    } finally {
-      setAuthLoading(false);
-    }
   }, []);
 
   useEffect(() => {
@@ -120,13 +109,11 @@ function App() {
 
   const featuredBooks = books.slice(0, 4);
 
-  // Given query, which is a form, populate exact and alternative matches
   const handleSearch = async (query) => {
     setHasSearched(true);
     setPage("search");
 
     try {
-      // Pack all fields and relaxation flags into a URLSearchParams, to be sent to backend
       const params = new URLSearchParams({
         title: query.title || "",
         author: query.author || "",
@@ -143,7 +130,7 @@ function App() {
       });
 
       const results = await searchBooksApi(params);
-      setExactMatches(results.exact_matches); // set state
+      setExactMatches(results.exact_matches);
       setAlternativeMatches(results.alternative_matches);
     } catch (error) {
       console.error("Search error:", error);
@@ -171,7 +158,6 @@ function App() {
 
     try {
       await submitReviewApi(isbn, score, text);
-      // Reload books so the database recalculates the new average rating and count
       loadBooks();
     } catch (error) {
       console.error("Error submitting review:", error);
@@ -249,6 +235,7 @@ function App() {
             addReview={addReview}
             user={user}
             goToSearch={() => setPage("search")}
+            onSelectBook={setSelectedBook}
           />
         </main>
       )}
@@ -280,6 +267,7 @@ function App() {
                 reviews={[]}
                 addReview={addReview}
                 user={user}
+                onSelectBook={setSelectedBook}
               />
             </>
           )}
@@ -321,6 +309,7 @@ function App() {
                   reviews={[]}
                   addReview={addReview}
                   user={user}
+                  onSelect={() => setSelectedBook(book)}
                 />
               ))}
             </div>
@@ -336,8 +325,17 @@ function App() {
           completeAccountSetup={completeAccountSetup}
           logout={logout}
           sessionError={sessionError}
-          retrySession={restoreSession}
           authLoading={authLoading}
+        />
+      )}
+
+      {/* Root-Level Full-Screen Two-Column Modal Overlay */}
+      {selectedBook && (
+        <BookDetailModal
+          book={selectedBook}
+          onClose={() => setSelectedBook(null)}
+          addReview={addReview}
+          user={user}
         />
       )}
 
