@@ -7,7 +7,6 @@ import BookSuggestions from "./components/BookSuggestions";
 import BookCard from "./components/BookCard";
 import FeaturedBooks from "./components/FeaturedBooks";
 import Login from "./components/Login";
-import Register from "./components/Register";
 
 import {
   accountSetupApi,
@@ -17,7 +16,6 @@ import {
   googleLoginApi,
   loginApi,
   logoutApi,
-  registerApi,
   searchBooksApi,
 } from "./services/api";
 
@@ -194,13 +192,6 @@ function App() {
     setPage("home");
   }, []);
 
-  const register = useCallback(async (username, email, password) => {
-    const account = await registerApi(username, email, password);
-    setUser(account);
-    setSessionError("");
-    setPage("home");
-  }, []);
-
   const googleLogin = useCallback(async (idToken) => {
     const result = await googleLoginApi(idToken);
     if (result.user) {
@@ -352,15 +343,6 @@ function App() {
           logout={logout}
           sessionError={sessionError}
           retrySession={restoreSession}
-          authLoading={authLoading}
-        />
-      )}
-
-      {page === "register" && (
-        <Register
-          user={user}
-          register={register}
-          logout={logout}
           authLoading={authLoading}
         />
       )}

@@ -34,11 +34,6 @@ export async function loginApi(username, password) {
   return data.user;
 }
 
-export async function registerApi(username, email, password) {
-  const data = await authRequest("register", { username, email, password });
-  return data.user;
-}
-
 export function googleLoginApi(idToken) {
   return authRequest("google", { id_token: idToken });
 }
