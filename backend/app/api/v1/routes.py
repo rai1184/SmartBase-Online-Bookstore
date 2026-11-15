@@ -147,30 +147,56 @@ def search_books():
         "alternative_matches": scored_alternatives, 
     })
 
+import hashlib
 
-# Submit a review for a book
-@api_v1.route('/reviews', methods=['POST'])
+@api_v1.post("/reviews")
 def submit_review():
-    data = request.get_json()
-    
-    isbn = data.get('isbn')
-    rating = data.get('rating')
-    comment = data.get('comment', '')
-    # TEMPORARY: When implemented, put logged in user's username here
-    username = data.get('username', 'Anonymous')
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"error": "Invalid request body."}), 400
 
-    # Basic validation
-    if not isbn or not rating:
+    isbn = payload.get("isbn")
+    rating = payload.get("rating")
+    comment = payload.get("comment", "")
+
+    if not isbn or rating is None:
         return jsonify({"error": "ISBN and rating are required fields."}), 400
 
-    try:
-        # Build the query and parameters
-        query, params = build_insert_review_query(isbn, rating, comment, username)
+    session_token = request.cookies.get("smartbase_session")
+    if not session_token:
+        return jsonify({"error": "Authentication required."}), 401
 
-        # Execute and commit using connection pooling
+    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
+
+    try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor()) as cursor:
-                cursor.execute(query, params)
+                # 1. Verify session token against AuthSessions and get user_id
+                cursor.execute(
+                    """
+                    SELECT `User`.user_id
+                    FROM AuthSessions
+                    JOIN `User` ON `User`.user_id = AuthSessions.user_id
+                    WHERE AuthSessions.session_token_hash = %s
+                      AND AuthSessions.expires_at > UTC_TIMESTAMP()
+                    """,
+                    (session_token_hash,),
+                )
+                user_row = cursor.fetchone()
+
+                if not user_row:
+                    return jsonify({"error": "Invalid or expired session."}), 401
+
+                user_id = user_row[0]
+
+                # 2. Insert the review
+                cursor.execute(
+                    """
+                    INSERT INTO Reviews (isbn, user_id, review_score, review_text)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (isbn, user_id, rating, comment),
+                )
                 connection.commit()
 
         return jsonify({
@@ -178,11 +204,14 @@ def submit_review():
             "review": {
                 "isbn": isbn,
                 "rating": rating,
-                "comment": comment,
-                "username": username
+                "comment": comment
             }
         }), 201
 
+    except mysql.connector.IntegrityError:
+        # Triggered if the user has already reviewed this specific book
+        return jsonify({"error": "You have already submitted a review for this book."}), 409
+
     except Exception as e:
         current_app.logger.exception("Review submission failed")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Review submission unavailable"}), 503

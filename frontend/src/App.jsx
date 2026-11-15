@@ -17,6 +17,7 @@ import {
   loginApi,
   logoutApi,
   searchBooksApi,
+  submitReviewApi
 } from "./services/api";
 
 function App() {
@@ -38,11 +39,6 @@ function App() {
   const [favorites, setFavorites] = useState(() => {
     const stored = localStorage.getItem("smartbase-favorites");
     return stored ? JSON.parse(stored) : [];
-  });
-
-  const [reviews, setReviews] = useState(() => {
-    const stored = localStorage.getItem("smartbase-reviews");
-    return stored ? JSON.parse(stored) : {};
   });
 
   const loadBooks = useCallback(() => {
@@ -167,22 +163,20 @@ function App() {
     });
   };
 
-  const addReview = (isbn, score, text) => {
+  const addReview = async (isbn, score, text) => {
     if (!user) {
       setPage("login");
       return;
     }
 
-    setReviews((current) => {
-      const newReview = { name: user.username, score, text };
-      const updated = {
-        ...current,
-        [isbn]: [...(current[isbn] || []), newReview],
-      };
-
-      localStorage.setItem("smartbase-reviews", JSON.stringify(updated));
-      return updated;
-    });
+    try {
+      await submitReviewApi(isbn, score, text);
+      // Reload books so the database recalculates the new average rating and count
+      loadBooks();
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      alert(error.message);
+    }
   };
 
   const login = useCallback(async (username, password) => {
@@ -251,7 +245,7 @@ function App() {
             onRetry={loadBooks}
             favorites={favorites}
             toggleFavorite={toggleFavorite}
-            reviews={reviews}
+            reviews={[]}
             addReview={addReview}
             user={user}
             goToSearch={() => setPage("search")}
@@ -283,7 +277,7 @@ function App() {
                 alternativeMatches={alternativeMatches}
                 favorites={favorites}
                 toggleFavorite={toggleFavorite}
-                reviews={reviews}
+                reviews={[]}
                 addReview={addReview}
                 user={user}
               />
@@ -324,7 +318,7 @@ function App() {
                   type="featured"
                   favorite={true}
                   toggleFavorite={toggleFavorite}
-                  reviews={reviews[book.ISBN] || []}
+                  reviews={[]}
                   addReview={addReview}
                   user={user}
                 />

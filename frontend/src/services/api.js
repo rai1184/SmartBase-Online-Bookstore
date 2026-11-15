@@ -92,6 +92,21 @@ export async function searchBooksApi(params) {
   };
 }
 
+export async function submitReviewApi(isbn, rating, comment) {
+  const response = await fetch(`${API_BASE_URL}/reviews`, {
+    method: "POST",
+    credentials: "include", // Crucial for sending the session cookie!
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ isbn, rating, comment }),
+  });
+  
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to submit review.");
+  }
+  return data;
+}
+
 export async function checkHealthApi() {
   const response = await fetch(`${API_BASE_URL}/health`);
   if (!response.ok) {

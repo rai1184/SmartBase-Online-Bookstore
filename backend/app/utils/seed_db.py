@@ -42,7 +42,7 @@ def initialize_database():
                     """
                 )
 
-                # 3. User Table (with google_sub allowing NULL for local registration)
+                # 3. User Table
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS User (
@@ -59,7 +59,7 @@ def initialize_database():
                     """
                 )
 
-                # 4. Reviews Table
+                # 4. Reviews Table, people can only have one review per book
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS Reviews (
@@ -68,6 +68,7 @@ def initialize_database():
                         user_id INT NOT NULL,
                         review_score INT NOT NULL CHECK (review_score BETWEEN 1 AND 5),
                         review_text TEXT NOT NULL,
+                        UNIQUE KEY unique_user_book (isbn, user_id),
                         FOREIGN KEY (isbn) REFERENCES Books(isbn),
                         FOREIGN KEY (user_id) REFERENCES User(user_id)
                     );
