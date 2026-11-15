@@ -16,6 +16,7 @@ export default function Login({
   const [setupToken, setSetupToken] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [googleError, setGoogleError] = useState("");
@@ -114,6 +115,11 @@ export default function Login({
   const submit = async (event) => {
     event.preventDefault();
     setError("");
+    if (mode === "setup" && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     submittingRef.current = true;
     setSubmitting(true);
 
@@ -218,6 +224,19 @@ export default function Login({
               />
             </label>
 
+            <label>
+              Confirm app password
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                minLength={12}
+                maxLength={128}
+                autoComplete="new-password"
+                required
+              />
+            </label>
+
             <button type="submit" disabled={submitting}>
               {submitting ? "Creating account..." : "Create account"}
             </button>
@@ -228,6 +247,7 @@ export default function Login({
                 setMode("login");
                 setSetupToken("");
                 setPassword("");
+                setConfirmPassword("");
                 setError("");
               }}
               disabled={submitting}
