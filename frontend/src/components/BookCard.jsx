@@ -69,8 +69,7 @@ export default function BookCard({
       {/* Book Cover Image */}
       <div className="book-cover-container">
         <img 
-          src={book.CoverImage || "/images/books/default-cover.jpg"} 
-          alt={""} 
+          src={book.CoverImage ? `/images/books/${book.CoverImage}` : "/images/books/default-cover.jpg"} 
           className="book-cover-image"
         />
       </div>

@@ -130,7 +130,7 @@ def initialize_database():
 
                 # Seed Books (with cover_image set to None or a filename)
                 books_data = [
-                    ('978-0441172719', 'Dune', 'Frank Herbert', 'Set on the desert planet Arrakis, this epic follows young Paul Atreides as his family accepts stewardship of the valuable spice resource, leading to betrayal and destiny.', 18.99, '1965-08-01', 10, "/images/bookes/dune.jpg"),
+                    ('978-0441172719', 'Dune', 'Frank Herbert', 'Set on the desert planet Arrakis, this epic follows young Paul Atreides as his family accepts stewardship of the valuable spice resource, leading to betrayal and destiny.', 18.99, '1965-08-01', 10, "dune.jpg"),
                     ('978-0553293357', 'Foundation', 'Isaac Asimov', 'A visionary mathematician uses psychohistory to predict the collapse of a galactic empire and creates a sanctuary of knowledge to shorten the coming dark age.', 14.99, '1951-05-01', 10, None),
                     ('978-0385531139', 'The Martian', 'Andy Weir', 'An astronaut is accidentally stranded alone on Mars after a fierce dust storm and must use his ingenuity and scientific wit to survive.', 16.00, '2014-02-11', 10, None),
                     ('978-0441569595', 'Neuromancer', 'William Gibson', 'A washed-up computer hacker is hired by a mysterious employer for one last dangerous run into cyberspace, shaping cyberpunk culture.', 15.50, '1984-07-01', 10, None),
