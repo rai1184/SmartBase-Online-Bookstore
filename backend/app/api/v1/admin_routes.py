@@ -5,10 +5,12 @@ from app.database.connection import get_db_connection
 import os
 from werkzeug.utils import secure_filename
 
+# The file extensions we accept for images
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
 admin_bp = Blueprint("admin_bp", __name__)
 
+# Check if user_id is an admin to gate admin features
 def is_admin_user(user_id):
     try:
         with closing(get_db_connection()) as connection:
@@ -19,7 +21,7 @@ def is_admin_user(user_id):
     except Exception:
         return False
 
-
+# Insert new book into DB
 @admin_bp.post("/admin/books")
 def admin_add_book():
     data = request.get_json() or {}
@@ -58,7 +60,7 @@ def admin_add_book():
         current_app.logger.exception("Failed to add book")
         return jsonify({"error": str(e)}), 500
 
-
+# Edit book in DB by isbn
 @admin_bp.put("/admin/books/<isbn>")
 def admin_update_book(isbn):
     data = request.get_json() or {}
@@ -95,7 +97,7 @@ def admin_update_book(isbn):
         current_app.logger.exception("Failed to update book")
         return jsonify({"error": str(e)}), 500
 
-
+# Delete book in DB by ISBN
 @admin_bp.delete("/admin/books/<isbn>")
 def admin_delete_book(isbn):
     user_id = request.args.get("user_id") or (request.get_json() and request.get_json().get("user_id"))
@@ -103,6 +105,7 @@ def admin_delete_book(isbn):
     if not user_id or not is_admin_user(user_id):
         return jsonify({"error": "Unauthorized: Admin privileges required."}), 403
 
+    # Remove the book from tables that reference it (not needed?)
     try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor()) as cursor:
@@ -115,9 +118,11 @@ def admin_delete_book(isbn):
         current_app.logger.exception("Failed to delete book")
         return jsonify({"error": str(e)}), 500
 
+# If image is allowed to be uploaded
 def allowed_file(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# Take image upload and put it in images/books
 @admin_bp.post("/admin/upload-image")
 def admin_upload_image():
     user_id = request.form.get("user_id")
