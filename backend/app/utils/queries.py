@@ -1,7 +1,4 @@
-def build_exact_query(title, author, genre, max_price, min_rating, publication_year):
-    # Base SQL query structure
-    # Join books with genres so we can get the genre name
-    # Join books with reviews so we can use the average and count functions
+def build_exact_query(title, author, genre, max_price, min_rating, publication_year, page_count="", in_stock=""):
     base_select = """
     SELECT
             Books.isbn,
@@ -13,17 +10,20 @@ def build_exact_query(title, author, genre, max_price, min_rating, publication_y
             Genres.genre_name,
             AVG(Reviews.review_score) AS avg_rating,
             COUNT(Reviews.review_score) AS review_count,
-            Books.cover_image
+            Books.cover_image,
+            Books.in_stock,
+            Books.page_count
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
         LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
     """
 
-    # Building the exact match query
     exact_query = base_select + " WHERE 1=1"
     exact_params = []
 
-    # MySQL has a "LIKE" keyword we can use
+    # Exclude books with 0 stock unless overridden
+    exact_query += " AND Books.in_stock > 0"
+
     if title:
         exact_query += " AND Books.title LIKE %s"
         exact_params.append(f"%{title}%")
@@ -45,11 +45,16 @@ def build_exact_query(title, author, genre, max_price, min_rating, publication_y
             exact_params.append(int(publication_year))
         except ValueError:
             pass
+    if page_count:
+        try:
+            # Looking for books with page count under or equal to specified number
+            exact_query += " AND Books.page_count <= %s"
+            exact_params.append(int(page_count))
+        except ValueError:
+            pass
 
-    # Group by unique books. After this the average review score will be calculated
     exact_query += " GROUP BY Books.isbn"
 
-    # Filter by minimum rating using HAVING 
     if min_rating:
         try:
             exact_query += " HAVING AVG(Reviews.review_score) >= %s"
@@ -61,9 +66,9 @@ def build_exact_query(title, author, genre, max_price, min_rating, publication_y
 
     return exact_query, exact_params
 
-# Construct query that returns alternatives
-def build_alternative_query(title, author, genre, max_price, min_rating, publication_year,
-                            r_title, r_author, r_genre, r_price, r_rating, r_year):
+
+def build_alternative_query(title, author, genre, max_price, min_rating, publication_year, page_count,
+                            r_title, r_author, r_genre, r_price, r_rating, r_year, r_page_count, r_in_stock):
     base_select = """
         SELECT
             Books.isbn,
@@ -75,7 +80,9 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
             Genres.genre_name,
             AVG(Reviews.review_score) AS avg_rating,
             COUNT(Reviews.review_score) AS review_count,
-            Books.cover_image
+            Books.cover_image,
+            Books.in_stock,
+            Books.page_count
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
         LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
@@ -84,7 +91,10 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
     query = base_select + " WHERE 1=1"
     params = []
 
-    # Only filter if present AND the user did NOT relax search
+    # Filter out 0 stock unless stock constraint is relaxed
+    if not r_in_stock:
+        query += " AND Books.in_stock > 0"
+
     if title and not r_title:
         query += " AND Books.title LIKE %s"
         params.append(f"%{title}%")
@@ -111,6 +121,13 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
         except ValueError:
             pass
 
+    if page_count and not r_page_count:
+        try:
+            query += " AND Books.page_count <= %s"
+            params.append(int(page_count))
+        except ValueError:
+            pass
+
     query += " GROUP BY Books.isbn"
 
     if min_rating and not r_rating:
@@ -123,21 +140,16 @@ def build_alternative_query(title, author, genre, max_price, min_rating, publica
     query += " ORDER BY Books.title"
     return query, params
 
+
 def build_insert_review_query(isbn, rating, comment, username):
-    """
-    Constructs the SQL query and parameters for inserting a new book review.
-    """
     query = """
         INSERT INTO Reviews (isbn, review_score, comment, username)
         VALUES (%s, %s, %s, %s)
     """
-    
-    # Safe type casting for the review score
     try:
         score = float(rating)
     except (ValueError, TypeError):
         score = 0.0
 
     params = (isbn, score, comment, username)
-    
     return query, params

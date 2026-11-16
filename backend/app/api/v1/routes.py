@@ -34,7 +34,9 @@ def list_books():
             Genres.genre_name,
             AVG(Reviews.review_score) AS avg_rating,
             COUNT(Reviews.review_score) AS review_count,
-            Books.cover_image
+            Books.cover_image,
+            Books.in_stock,
+            Books.page_count
         FROM Books
         LEFT JOIN Genres ON Books.genre_id = Genres.genre_id
         LEFT JOIN Reviews ON Books.isbn = Reviews.isbn
@@ -81,13 +83,14 @@ def database_health_check():
 
 @api_v1.get("/books/search")
 def search_books():
-    # Grab search parameters from the URL sent by React
     title = request.args.get("title", "").strip()
     author = request.args.get("author", "").strip()
     genre = request.args.get("genre", "All").strip()
     max_price = request.args.get("max_price", "").strip()
     min_rating = request.args.get("min_rating", "").strip()
     publication_year = request.args.get("publication_year", "").strip()
+    in_stock = request.args.get("in_stock", "").strip()
+    page_count = request.args.get("page_count", "").strip()
     
     relax_title = request.args.get("relax_title", "").strip() == "true"
     relax_author = request.args.get("relax_author", "").strip() == "true"
@@ -95,12 +98,16 @@ def search_books():
     relax_price = request.args.get("relax_price", "").strip() == "true"
     relax_rating = request.args.get("relax_rating", "").strip() == "true"
     relax_year = request.args.get("relax_year", "").strip() == "true"
+    relax_in_stock = request.args.get("relax_in_stock", "").strip() == "true"
+    relax_page_count = request.args.get("relax_page_count", "").strip() == "true"
 
-    # Create queries
-    exact_query, exact_params = build_exact_query(title, author, genre, max_price, min_rating, publication_year)
+    # Pass new fields into query builders
+    exact_query, exact_params = build_exact_query(
+        title, author, genre, max_price, min_rating, publication_year, page_count, in_stock
+    )
     alternative_query, alternative_params = build_alternative_query(
-        title, author, genre, max_price, min_rating, publication_year,
-        relax_title, relax_author, relax_genre, relax_price, relax_rating, relax_year
+        title, author, genre, max_price, min_rating, publication_year, page_count,
+        relax_title, relax_author, relax_genre, relax_price, relax_rating, relax_year, relax_page_count, relax_in_stock
     )
 
     # Run the created queries
@@ -256,7 +263,6 @@ def get_book_reviews(isbn):
 # Get all reviews for the currently logged-in user
 @api_v1.get("/user/reviews")
 def get_user_reviews():
-    # Use the literal cookie name string since AUTH_SESSION_COOKIE is in the auth blueprint
     session_token = request.cookies.get("smartbase_session")
     if not session_token:
         return jsonify({"message": "Authentication required"}), 401
@@ -265,7 +271,7 @@ def get_user_reviews():
     try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor(dictionary=True)) as cursor:
-                # 1. Resolve user_id from the active session token hash
+                # Resolve user_id from the active session token hash
                 cursor.execute(
                     """
                     SELECT user_id 
@@ -282,7 +288,7 @@ def get_user_reviews():
                 
                 user_id = session_row["user_id"]
 
-                # 2. Fetch all reviews written by this user, joined with book info
+                # Fetch all reviews written by this user, joined with book info
                 cursor.execute(
                     """
                     SELECT 

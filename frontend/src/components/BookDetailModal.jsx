@@ -81,7 +81,8 @@ export default function BookDetailModal({ book, onClose, addReview, user }) {
               <div><strong>Published:</strong> {book.PublicationYear || "N/A"}</div>
               <div><strong>Price:</strong> ${book.MSRP ? book.MSRP.toFixed(2) : "0.00"}</div>
               <div><strong>Rating:</strong> {ratingDisplay}</div>
-              <div><strong>ISBN:</strong> {book.ISBN}</div>
+              <div><strong>In Stock:</strong> {book.InStock ?? 0} copies</div>
+              <div style={{ gridColumn: "span 2" }}><strong>ISBN:</strong> {book.ISBN}</div>
             </div>
           </div>
 

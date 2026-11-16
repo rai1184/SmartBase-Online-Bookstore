@@ -39,10 +39,18 @@ export default function BookCard({
         />
       </div>
       
-      {/* Removed stopPropagation here so clicking text opens the modal */}
       <div className="book-information">
         <h3>{book.Title}</h3>
         <p className="book-author">by {book.Author}</p>
+
+        {/* Stock status moved right below author for high visibility */}
+        {book.InStock !== undefined && (
+          <p style={{ margin: "4px 0 10px 0", fontSize: "0.85rem" }}>
+            <span className={book.InStock === 0 ? "out-of-stock" : "in-stock"}>
+              {book.InStock > 0 ? `● ${book.InStock} in stock` : "✕ Out of stock"}
+            </span>
+          </p>
+        )}
 
         {book.About && (
           <p className="book-description">{book.About}</p>

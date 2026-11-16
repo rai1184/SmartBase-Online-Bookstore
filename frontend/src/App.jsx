@@ -109,7 +109,7 @@ function App() {
 
   const featuredBooks = books.slice(0, 4);
 
-  const handleSearch = async (query) => {
+ const handleSearch = async (query) => {
     setHasSearched(true);
     setPage("search");
 
@@ -121,12 +121,16 @@ function App() {
         max_price: query.maxPrice || "",
         min_rating: query.minRating || "",
         publication_year: query.publicationYear || "",
+        page_count: query.pageCount || "",
+        in_stock: query.inStock || "",
         relax_title: query.relaxTitle,
         relax_author: query.relaxAuthor,
         relax_genre: query.relaxGenre,
         relax_price: query.relaxPrice,
         relax_rating: query.relaxRating,
         relax_year: query.relaxYear,
+        relax_page_count: query.relaxPageCount,
+        relax_in_stock: query.relaxInStock,
       });
 
       const results = await searchBooksApi(params);

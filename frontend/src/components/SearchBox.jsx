@@ -11,6 +11,8 @@ export default function SearchBox({
     maxPrice: "",
     minRating: "",
     publicationYear: "",
+    pageCount: "",
+    inStock: "",
 
     relaxTitle: true,
     relaxAuthor: true,
@@ -18,6 +20,8 @@ export default function SearchBox({
     relaxPrice: true,
     relaxRating: true,
     relaxYear: true,
+    relaxPageCount: true,
+    relaxInStock: true,
   });
 
   const update = (event) => {
@@ -121,6 +125,18 @@ export default function SearchBox({
         />
       </label>
 
+      <label>
+        Maximum Pages
+        <input
+          type="number"
+          name="pageCount"
+          min="0"
+          placeholder="Example: 500"
+          value={query.pageCount}
+          onChange={update}
+        />
+      </label>
+
       <div className="relaxation-box">
         <h3>Smart Alternative Settings</h3>
 
@@ -187,6 +203,26 @@ export default function SearchBox({
             onChange={update}
           />
           Publication Year
+        </label>
+
+        <label>
+          <input
+            type="checkbox"
+            name="relaxPageCount"
+            checked={query.relaxPageCount}
+            onChange={update}
+          />
+          Page Count
+        </label>
+
+        <label>
+          <input
+            type="checkbox"
+            name="relaxInStock"
+            checked={query.relaxInStock}
+            onChange={update}
+          />
+          Include Out of Stock
         </label>
       </div>
 
