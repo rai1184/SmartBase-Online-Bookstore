@@ -38,6 +38,17 @@ export default function Navbar({
           </button>
         )}
 
+        {/* Render Admin Dashboard link if user is logged in and is_admin is true */}
+        {user && user.is_admin && (
+          <button
+            className={page === "admin" ? "active" : ""}
+            onClick={() => setPage("admin")}
+            style={{ color: "#f39c12" }}
+          >
+            Admin Dashboard
+          </button>
+        )}
+
         {user ? (
           <>
             <span className="username">

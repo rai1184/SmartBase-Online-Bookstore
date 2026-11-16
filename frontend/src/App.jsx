@@ -7,7 +7,8 @@ import BookSuggestions from "./components/BookSuggestions";
 import FeaturedBooks from "./components/FeaturedBooks";
 import Login from "./components/Login";
 import BookDetailModal from "./components/BookDetailModal";
-import AccountPage from "./components/AccountPage"
+import AccountPage from "./components/AccountPage";
+import AdminDashboard from "./components/AdminDashboard";
 
 import {
   accountSetupApi,
@@ -109,7 +110,7 @@ function App() {
 
   const featuredBooks = books.slice(0, 4);
 
- const handleSearch = async (query) => {
+  const handleSearch = async (query) => {
     setHasSearched(true);
     setPage("search");
 
@@ -294,6 +295,15 @@ function App() {
           favorites={favorites} 
           toggleFavorite={toggleFavorite} 
           onSelectBook={setSelectedBook} 
+        />
+      )}
+
+      {/* Admin Dashboard Page Routing */}
+      {page === "admin" && (
+        <AdminDashboard 
+          user={user} 
+          books={books} 
+          refreshBooks={loadBooks} 
         />
       )}
 

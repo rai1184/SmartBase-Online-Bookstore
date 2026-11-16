@@ -72,8 +72,18 @@ def _create_auth_session(connection, user_id):
 
 
 def _session_response(user, session_token):
+    # user tuple expected: (user_id, username, ..., is_admin)
+    # user[0] = user_id, user[1] = username, user[last] = is_admin
+    is_admin_val = bool(user[3]) if len(user) > 3 and user[3] is not None else False
+    
     response = make_response(
-        jsonify({"user": {"user_id": user[0], "username": user[1]}})
+        jsonify({
+            "user": {
+                "user_id": user[0], 
+                "username": user[1],
+                "is_admin": is_admin_val
+            }
+        })
     )
     response.set_cookie(
         AUTH_SESSION_COOKIE,
@@ -112,7 +122,7 @@ def login():
             with closing(connection.cursor()) as cursor:
                 cursor.execute(
                     """
-                    SELECT user_id, username, password_hash
+                    SELECT user_id, username, password_hash, is_admin
                     FROM `User`
                     WHERE username = %s OR user_email = %s
                     """,
@@ -181,7 +191,7 @@ def google_login():
             with closing(connection.cursor()) as cursor:
                 cursor.execute(
                     """
-                    SELECT user_id, username
+                    SELECT user_id, username, is_admin
                     FROM `User`
                     WHERE google_sub = %s
                     """,
@@ -287,8 +297,8 @@ def create_account():
                 cursor.execute(
                     """
                     INSERT INTO `User`
-                        (username, user_email, password_hash, google_sub, display_name)
-                    VALUES (%s, %s, %s, %s, %s)
+                        (username, user_email, password_hash, google_sub, display_name, is_admin)
+                    VALUES (%s, %s, %s, %s, %s, 0)
                     """,
                     (
                         username,
@@ -298,7 +308,7 @@ def create_account():
                         display_name,
                     ),
                 )
-                user = (cursor.lastrowid, username)
+                user = (cursor.lastrowid, username, 0)
 
             session_token = _create_auth_session(connection, user[0])
     except mysql.connector.IntegrityError:
@@ -322,7 +332,7 @@ def current_session():
             with closing(connection.cursor()) as cursor:
                 cursor.execute(
                     """
-                    SELECT `User`.user_id, `User`.username
+                    SELECT `User`.user_id, `User`.username, `User`.is_admin
                     FROM AuthSessions
                     JOIN `User` ON `User`.user_id = AuthSessions.user_id
                     WHERE AuthSessions.session_token_hash = %s
@@ -349,7 +359,13 @@ def current_session():
         )
         return response
 
-    return jsonify({"user": {"user_id": user[0], "username": user[1]}})
+    return jsonify({
+        "user": {
+            "user_id": user[0], 
+            "username": user[1],
+            "is_admin": bool(user[2])
+        }
+    })
 
 
 @auth_v1.post("/auth/logout")

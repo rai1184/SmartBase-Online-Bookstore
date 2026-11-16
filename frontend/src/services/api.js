@@ -164,3 +164,57 @@ export async function updateReviewApi(reviewId, score, text) {
   }
   return response.json();
 }
+
+export async function adminAddBookApi(bookData, userId) {
+  const res = await fetch("/api/admin/books", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...bookData, user_id: userId }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to add book");
+  }
+  return res.json();
+}
+
+export async function adminUpdateBookApi(isbn, bookData, userId) {
+  const res = await fetch(`/api/admin/books/${isbn}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...bookData, user_id: userId }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to update book");
+  }
+  return res.json();
+}
+
+export async function adminDeleteBookApi(isbn, userId) {
+  const res = await fetch(`/api/admin/books/${isbn}?user_id=${userId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to delete book");
+  }
+  return res.json();
+}
+
+export async function adminUploadImageApi(file, userId) {
+  const formData = new FormData();
+  formData.append("image", file);
+  formData.append("user_id", userId);
+
+  const res = await fetch("/api/admin/upload-image", {
+    method: "POST",
+    body: formData, // Note: Do not set Content-Type header manually when using FormData
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || "Failed to upload image");
+  }
+  return res.json();
+}
