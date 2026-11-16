@@ -33,7 +33,13 @@ export default function BookCard({
       {/* Book Cover Image */}
       <div className="book-cover-container">
         <img 
-          src={book.CoverImage ? `/images/books/${book.CoverImage}` : "/images/books/default-cover.jpg"} 
+          src={
+            !book.CoverImage
+              ? "/images/books/default-cover.jpg"
+              : book.CoverImage.startsWith("http://") || book.CoverImage.startsWith("https://")
+              ? book.CoverImage
+              : `/images/books/${book.CoverImage}`
+          } 
           className="book-cover-image"
           alt={book.Title}
         />
@@ -43,10 +49,10 @@ export default function BookCard({
         <h3>{book.Title}</h3>
         <p className="book-author">by {book.Author}</p>
 
-        {/* Stock status moved right below author for high visibility */}
+        {/* Stock status */}
         {book.InStock !== undefined && (
           <p style={{ margin: "4px 0 10px 0", fontSize: "0.85rem" }}>
-            <span className={book.InStock === 0 ? "out-of-stock" : "in-stock"}>
+            <span style={{ color: book.InStock === 0 ? "var(--color-danger, #9b3d49)" : "inherit" }}>
               {book.InStock > 0 ? `● ${book.InStock} in stock` : "✕ Out of stock"}
             </span>
           </p>
