@@ -162,6 +162,8 @@ def initialize_database():
                     ('978-0375842207', 'The Book Thief', 'Markus Zusak', 'Narrated by Death, this story follows a foster girl in Nazi Germany who finds solace by stealing books and sharing them.', 13.99, '2005-09-01', 13, None),
                     ('978-0451166890', 'The Pillars of the Earth', 'Ken Follett', 'A sweeping epic centered around the construction of a massive cathedral in a twelfth-century English town torn apart by civil war.', 22.00, '1989-10-01', 13, None),
                     ('978-1455563920', 'Pachinko', 'Min Jin Lee', 'A multi-generational saga detailing the struggles and triumphs of a Korean immigrant family living in 20th-century Japan.', 17.00, '2017-02-07', 13, None),
+                    ('978-0062671202', 'The Night Watchman', 'Louise Erdrich', 'A historical novel following a Chippewa community in 1950s North Dakota as they confront a federal policy threatening tribal rights.', 14.99, '2020-03-03', 13, "https://books.google.com/books/content?id=ZECbDwAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"),
+
                     ('978-1524763138', 'Becoming', 'Michelle Obama', 'The former First Lady shares her deep roots on the South Side of Chicago, balancing work, family, and life in the White House.', 19.00, '2018-11-13', 20, None),
                     ('978-0399590504', 'Educated', 'Tara Westover', 'A memoir about a young woman who grows up isolated from society by survivalist parents and eventually escapes to earn a PhD.', 18.50, '2018-02-20', 20, None),
                     ('978-0553296983', 'The Diary of a Young Girl', 'Anne Frank', 'The authentic, deeply moving journal of a Jewish teenager hiding with her family from the Nazi regime in Amsterdam.', 10.99, '1947-06-25', 20, None),
@@ -172,9 +174,15 @@ def initialize_database():
                     ('978-0553380163', 'A Brief History of Time', 'Stephen Hawking', 'A landmark exploration of cosmology, black holes, space-time, and the fundamental forces shaping our universe.', 16.00, '1988-04-01', 21, None),
                     ('978-0345539434', 'Cosmos', 'Carl Sagan', 'A stunning voyage through space and time, illuminating the history of science, astronomy, and our place in the universe.', 20.00, '1980-10-01', 21, None),
                     ('978-0618249060', 'Silent Spring', 'Rachel Carson', 'A groundbreaking environmental science text examining the widespread impact of chemical pesticides on ecosystems and wildlife.', 15.00, '1962-09-27', 21, None),
+                    ('978-1771642491', 'The Hidden Life of Trees', 'Peter Wohlleben', 'An introduction to forest ecology that explores how trees interact and respond to their environments.', 18.95, '2016-09-13', 21, "https://books.google.com/books/content?id=WEn4DAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"),
+
                     ('978-0735211292', 'Atomic Habits', 'James Clear', 'A practical, actionable framework for building good habits, breaking bad ones, and mastering small behavioral changes.', 16.00, '2018-10-16', 22, None),
                     ('978-0684839395', 'The 7 Habits of Highly Effective People', 'Stephen Covey', 'A timeless, principle-centered approach for solving personal and professional problems and improving effectiveness.', 18.00, '1989-08-15', 22, None),
-                    ('978-0060254926', 'Where the Wild Things Are', 'Maurice Sendak', 'A mischievous young boy named Max is sent to his room without supper, lets his imagination run wild, and sails to an island of monsters.', 18.95, '1963-11-09', 30, None)
+                    ('978-1455586660', 'Deep Work', 'Cal Newport', 'A practical guide to focused work habits and reducing distractions to improve professional output.', 2.99, '2016-01-05', 22, "https://books.google.com/books/content?id=4QTzCAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"),
+
+                    ('978-0060254926', 'Where the Wild Things Are', 'Maurice Sendak', 'A mischievous young boy named Max is sent to his room without supper, lets his imagination run wild, and sails to an island of monsters.', 18.95, '1963-11-09', 30, None),
+                    ('979-8217050154', "The Very Hungry Caterpillar's First Signs", 'Eric Carle', 'A board book introducing young children to ten everyday American Sign Language signs.', 6.99, '2025-07-15', 30, "https://books.google.com/books/content?id=GRMqEQAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"),
+                    ('978-0593520284', "The Very Hungry Caterpillar's First Fall", 'Eric Carle', 'A picture book following the caterpillar and friends through autumn activities and seasonal changes.', 4.99, '2022-08-02', 30, "https://books.google.com/books/content?id=DWpiEAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api")
                 ]
                 cursor.executemany(
                     """
