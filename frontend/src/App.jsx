@@ -4,10 +4,10 @@ import "./App.css";
 import Navbar from "./components/Navbar";
 import SearchBox from "./components/SearchBox";
 import BookSuggestions from "./components/BookSuggestions";
-import BookCard from "./components/BookCard";
 import FeaturedBooks from "./components/FeaturedBooks";
 import Login from "./components/Login";
 import BookDetailModal from "./components/BookDetailModal";
+import AccountPage from "./components/AccountPage"
 
 import {
   accountSetupApi,
@@ -205,8 +205,6 @@ function App() {
     }
   }, []);
 
-  const favoriteBooks = books.filter((book) => favorites.includes(book.ISBN));
-
   return (
     <div className="app-container">
       <Navbar
@@ -274,49 +272,6 @@ function App() {
         </main>
       )}
 
-      {page === "favorites" && (
-        <main className="page">
-          <div className="page-heading">
-            <p className="section-label">YOUR LIBRARY</p>
-            <h1>Favorite Books</h1>
-            <p>Books you save will appear here.</p>
-          </div>
-
-          {booksLoading ? (
-            <p className="empty-message" role="status">Loading books...</p>
-          ) : booksError ? (
-            <div className="empty-message" role="alert">
-              <p>{booksError}</p>
-              <button className="standard-button" onClick={loadBooks}>Try again</button>
-            </div>
-          ) : favoriteBooks.length === 0 ? (
-            <div className="empty-message">
-              <h3>No favorites yet.</h3>
-              <p>Search or browse books and click the heart to save them.</p>
-              <button className="standard-button" onClick={() => setPage("search")}>
-                Browse Books
-              </button>
-            </div>
-          ) : (
-            <div className="book-grid">
-              {favoriteBooks.map((book) => (
-                <BookCard
-                  key={book.ISBN}
-                  book={book}
-                  type="featured"
-                  favorite={true}
-                  toggleFavorite={toggleFavorite}
-                  reviews={[]}
-                  addReview={addReview}
-                  user={user}
-                  onSelect={() => setSelectedBook(book)}
-                />
-              ))}
-            </div>
-          )}
-        </main>
-      )}
-
       {page === "login" && (
         <Login
           user={user}
@@ -326,6 +281,15 @@ function App() {
           logout={logout}
           sessionError={sessionError}
           authLoading={authLoading}
+        />
+      )}
+
+      {page === "account" && user && (
+        <AccountPage 
+          user={user} 
+          favorites={favorites} 
+          toggleFavorite={toggleFavorite} 
+          onSelectBook={setSelectedBook} 
         />
       )}
 

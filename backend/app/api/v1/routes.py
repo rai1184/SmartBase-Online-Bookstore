@@ -252,3 +252,55 @@ def get_book_reviews(isbn):
     except Exception:
         current_app.logger.exception("Failed to fetch book reviews")
         return jsonify({"error": "Reviews unavailable"}), 503
+
+# Get all reviews for the currently logged-in user
+@api_v1.get("/user/reviews")
+def get_user_reviews():
+    # Use the literal cookie name string since AUTH_SESSION_COOKIE is in the auth blueprint
+    session_token = request.cookies.get("smartbase_session")
+    if not session_token:
+        return jsonify({"message": "Authentication required"}), 401
+
+    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor(dictionary=True)) as cursor:
+                # 1. Resolve user_id from the active session token hash
+                cursor.execute(
+                    """
+                    SELECT user_id 
+                    FROM AuthSessions 
+                    WHERE session_token_hash = %s 
+                      AND expires_at > UTC_TIMESTAMP()
+                    """,
+                    (session_token_hash,)
+                )
+                session_row = cursor.fetchone()
+                
+                if not session_row:
+                    return jsonify({"message": "Authentication required"}), 401
+                
+                user_id = session_row["user_id"]
+
+                # 2. Fetch all reviews written by this user, joined with book info
+                cursor.execute(
+                    """
+                    SELECT 
+                        r.review_id, 
+                        r.isbn, 
+                        r.review_score AS score, 
+                        r.review_text AS text, 
+                        b.title AS book_title,
+                        b.cover_image AS cover_image
+                    FROM Reviews r
+                    JOIN Books b ON r.isbn = b.isbn
+                    WHERE r.user_id = %s
+                    """,
+                    (user_id,)
+                )
+                reviews = cursor.fetchall()
+        
+        return jsonify(reviews)
+    except Exception:
+        current_app.logger.exception("Failed to fetch user reviews")
+        return jsonify({"error": "Reviews unavailable"}), 503

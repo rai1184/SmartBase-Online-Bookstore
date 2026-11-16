@@ -4,7 +4,6 @@ export default function Navbar({
   user,
   logout,
   authLoading,
-  favoriteCount,
 }) {
   return (
     <header className="navbar">
@@ -30,12 +29,14 @@ export default function Navbar({
           Search
         </button>
 
-        <button
-          className={page === "favorites" ? "active" : ""}
-          onClick={() => setPage("favorites")}
-        >
-          Favorites ({favoriteCount})
-        </button>
+        {user && (
+          <button 
+            className={page === "account" ? "active" : ""} 
+            onClick={() => setPage("account")}
+          >
+            Account
+          </button>
+        )}
 
         {user ? (
           <>

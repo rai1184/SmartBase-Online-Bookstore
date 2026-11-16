@@ -123,3 +123,20 @@ export async function fetchBookReviewsApi(isbn) {
   }
   return response.json();
 }
+
+/**
+ * Fetch all reviews posted by the currently logged-in user.
+ */
+export async function fetchUserReviewsApi() {
+  const response = await fetch(`${API_BASE_URL}/user/reviews`, {
+    method: "GET",
+    credentials: "include", // Required to send the smartbase_session cookie
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to load your reviews.");
+  }
+
+  return response.json();
+}
