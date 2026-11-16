@@ -3,7 +3,8 @@ from pathlib import Path
 import tempfile
 import unittest
 import urllib.error
-from unittest.mock import patch
+import urllib.parse
+from unittest.mock import MagicMock, patch
 
 from app.utils.google_books_preview import (
     fetch_books,
@@ -80,6 +81,31 @@ class GoogleBooksPreviewTests(unittest.TestCase):
                 fetch_books("subject:Science Fiction", 5, api_key)
 
         self.assertNotIn(api_key, str(raised.exception))
+
+    def test_fetch_books_supports_paging_and_paid_ebook_filter(self):
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = b'{"items":[],"totalItems":0}'
+
+        with patch(
+            "app.utils.google_books_preview.urllib.request.urlopen",
+            return_value=response,
+        ) as urlopen:
+            fetch_books(
+                "inauthor:Isaac Asimov",
+                10,
+                "test-key",
+                start_index=10,
+                book_filter="paid-ebooks",
+            )
+
+        request = urlopen.call_args.args[0]
+        params = urllib.parse.parse_qs(
+            urllib.parse.urlsplit(request.full_url).query
+        )
+        self.assertEqual(params["startIndex"], ["10"])
+        self.assertEqual(params["maxResults"], ["10"])
+        self.assertEqual(params["filter"], ["paid-ebooks"])
 
     def test_ready_to_seed_requires_isbn_price_and_cover(self):
         complete_item = {

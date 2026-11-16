@@ -38,14 +38,17 @@ def load_api_key(env_file=ENV_FILE):
     )
 
 
-def fetch_books(query, max_results, api_key):
-    params = urllib.parse.urlencode(
-        {
-            "q": query,
-            "maxResults": max_results,
-            "key": api_key,
-        }
-    )
+def fetch_books(query, max_results, api_key, start_index=0, book_filter=None):
+    params = {
+        "q": query,
+        "maxResults": max_results,
+        "key": api_key,
+    }
+    if start_index:
+        params["startIndex"] = start_index
+    if book_filter:
+        params["filter"] = book_filter
+    params = urllib.parse.urlencode(params)
     request = urllib.request.Request(
         f"{GOOGLE_BOOKS_API_URL}?{params}",
         headers={"Accept": "application/json"},
@@ -155,6 +158,17 @@ def main(argv=None):
         help="Number of results to preview (1-10; default: 5)",
     )
     parser.add_argument(
+        "--start-index",
+        type=int,
+        default=0,
+        help="Starting result offset for paging through search results (default: 0).",
+    )
+    parser.add_argument(
+        "--paid-ebooks",
+        action="store_true",
+        help="Restrict results to paid Google eBooks, which may have eBook prices.",
+    )
+    parser.add_argument(
         "--show-cover-urls",
         action="store_true",
         help="Print Google Books cover URLs for returned books.",
@@ -170,16 +184,26 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if not 1 <= args.max_results <= 10:
         parser.error("--max-results must be between 1 and 10")
+    if args.start_index < 0:
+        parser.error("--start-index must be zero or greater")
 
     try:
         api_key = load_api_key()
-        payload = fetch_books(args.query, args.max_results, api_key)
+        payload = fetch_books(
+            args.query,
+            args.max_results,
+            api_key,
+            start_index=args.start_index,
+            book_filter="paid-ebooks" if args.paid_ebooks else None,
+        )
     except RuntimeError as error:
         print(error, file=sys.stderr)
         return 1
 
     items = payload.get("items", [])
     print(f"Google Books reports {payload.get('totalItems', 0)} matching books.")
+    if args.paid_ebooks:
+        print("Google Books filter: paid-ebooks")
     if not items:
         print("No results were returned.")
         return 0
