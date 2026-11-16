@@ -1,31 +1,29 @@
 import { useState, useEffect } from "react";
 import BookCard from "./BookCard";
-import { fetchBooksFromApi, fetchUserReviewsApi } from "../services/api";
+import { fetchBooksFromApi, fetchUserReviewsApi, deleteReviewApi, updateReviewApi } from "../services/api";
 
 export default function AccountPage({ user, favorites, toggleFavorite, onSelectBook }) {
   const [favoriteBooks, setFavoriteBooks] = useState([]);
-  const [userReviews, setUserReviews] = useState([]); // <--- State for user reviews
+  const [userReviews, setUserReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Edit state tracking
+  const [editingId, setEditingId] = useState(null);
+  const [editScore, setEditScore] = useState(5);
+  const [editText, setEditText] = useState("");
 
   useEffect(() => {
     let active = true;
 
     async function loadAccountData() {
       try {
-        // Fetch favorite books catalog data and user's reviews in parallel
         const [books, reviews] = await Promise.all([
           fetchBooksFromApi(),
-          fetchUserReviewsApi().catch((err) => {
-            console.error("Failed to load user reviews:", err);
-            return []; // Fallback to empty array if reviews fail
-          })
+          fetchUserReviewsApi().catch(() => [])
         ]);
 
         if (!active) return;
-
-        // Filter catalog down to favorited items
-        const favs = books.filter((book) => favorites.includes(book.ISBN));
-        setFavoriteBooks(favs);
+        setFavoriteBooks(books.filter((book) => favorites.includes(book.ISBN)));
         setUserReviews(reviews);
       } catch (err) {
         console.error("Failed to load account data:", err);
@@ -35,11 +33,38 @@ export default function AccountPage({ user, favorites, toggleFavorite, onSelectB
     }
 
     loadAccountData();
-
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [favorites]);
+
+  const handleDelete = async (reviewId) => {
+    if (!window.confirm("Are you sure you want to delete this review?")) return;
+    try {
+      await deleteReviewApi(reviewId);
+      setUserReviews((prev) => prev.filter((r) => r.review_id !== reviewId));
+    } catch (err) {
+      console.error("Failed to delete review:", err);
+      alert("Could not delete review.");
+    }
+  };
+
+  const handleStartEdit = (rev) => {
+    setEditingId(rev.review_id);
+    setEditScore(rev.score);
+    setEditText(rev.text);
+  };
+
+  const handleSaveEdit = async (reviewId) => {
+    try {
+      await updateReviewApi(reviewId, Number(editScore), editText);
+      setUserReviews((prev) =>
+        prev.map((r) => (r.review_id === reviewId ? { ...r, score: Number(editScore), text: editText } : r))
+      );
+      setEditingId(null);
+    } catch (err) {
+      console.error("Failed to update review:", err);
+      alert("Could not update review.");
+    }
+  };
 
   if (!user) {
     return (
@@ -66,7 +91,6 @@ export default function AccountPage({ user, favorites, toggleFavorite, onSelectB
           <h2>My Favorite Books</h2>
           <span className="result-count">{favoriteBooks.length} saved</span>
         </div>
-
         {loading ? (
           <p className="empty-message">Loading your favorites...</p>
         ) : favoriteBooks.length > 0 ? (
@@ -105,18 +129,48 @@ export default function AccountPage({ user, favorites, toggleFavorite, onSelectB
             {userReviews.map((rev) => (
               <div 
                 key={rev.review_id} 
-                style={{ 
-                  background: "white", 
-                  padding: "16px", 
-                  borderRadius: "8px", 
-                  border: "1px solid var(--color-border)" 
-                }}
+                style={{ background: "white", padding: "16px", borderRadius: "8px", border: "1px solid var(--color-border)" }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                  <strong>{rev.book_title}</strong>
-                  <span>★ {rev.score}</span>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", alignItems: "center" }}>
+                  <strong style={{ cursor: "pointer" }} onClick={() => onSelectBook({ ISBN: rev.isbn, Title: rev.book_title, CoverImage: rev.cover_image })}>
+                    {rev.book_title}
+                  </strong>
+                  {editingId !== rev.review_id && <span>★ {rev.score}</span>}
                 </div>
-                <p style={{ color: "var(--color-ink-soft)", margin: 0 }}>{rev.text}</p>
+
+                {editingId === rev.review_id ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "10px" }}>
+                    <select value={editScore} onChange={(e) => setEditScore(e.target.value)}>
+                      <option value="5">5 stars</option>
+                      <option value="4">4 stars</option>
+                      <option value="3">3 stars</option>
+                      <option value="2">2 stars</option>
+                      <option value="1">1 star</option>
+                    </select>
+                    <textarea 
+                      value={editText} 
+                      onChange={(e) => setEditText(e.target.value)} 
+                      rows={3} 
+                      style={{ width: "100%", padding: "8px" }}
+                    />
+                    <div style={{ display: "flex", gap: "8px" }}>
+                      <button onClick={() => handleSaveEdit(rev.review_id)}>Save</button>
+                      <button onClick={() => setEditingId(null)} style={{ background: "#ccc" }}>Cancel</button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ color: "var(--color-ink-soft)", margin: "0 0 12px 0" }}>{rev.text}</p>
+                    <div style={{ display: "flex", gap: "12px", fontSize: "0.85rem" }}>
+                      <button onClick={() => handleStartEdit(rev)} style={{ background: "none", border: "none", color: "var(--color-primary)", cursor: "pointer", padding: 0 }}>
+                        Edit
+                      </button>
+                      <button onClick={() => handleDelete(rev.review_id)} style={{ background: "none", border: "none", color: "#d9534f", cursor: "pointer", padding: 0 }}>
+                        Delete
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>

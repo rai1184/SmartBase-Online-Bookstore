@@ -304,3 +304,102 @@ def get_user_reviews():
     except Exception:
         current_app.logger.exception("Failed to fetch user reviews")
         return jsonify({"error": "Reviews unavailable"}), 503
+
+    # Delete a review by ID
+@api_v1.delete("/reviews/<int:review_id>")
+def delete_review(review_id):
+    session_token = request.cookies.get("smartbase_session")
+    if not session_token:
+        return jsonify({"message": "Authentication required"}), 401
+
+    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor(dictionary=True)) as cursor:
+                # Verify session and get user_id
+                cursor.execute(
+                    """
+                    SELECT user_id 
+                    FROM AuthSessions 
+                    WHERE session_token_hash = %s 
+                      AND expires_at > UTC_TIMESTAMP()
+                    """,
+                    (session_token_hash,)
+                )
+                session_row = cursor.fetchone()
+                if not session_row:
+                    return jsonify({"message": "Authentication required"}), 401
+
+                user_id = session_row["user_id"]
+
+                # Delete only if the review belongs to this user
+                cursor.execute(
+                    "DELETE FROM Reviews WHERE review_id = %s AND user_id = %s",
+                    (review_id, user_id)
+                )
+                connection.commit()
+                
+                if cursor.rowcount == 0:
+                    return jsonify({"message": "Review not found or unauthorized"}), 404
+
+        return jsonify({"message": "Review deleted successfully"})
+    except Exception:
+        current_app.logger.exception("Failed to delete review")
+        return jsonify({"error": "Operation unavailable"}), 503
+
+
+# Update a review by ID
+@api_v1.put("/reviews/<int:review_id>")
+def update_review(review_id):
+    session_token = request.cookies.get("smartbase_session")
+    if not session_token:
+        return jsonify({"message": "Authentication required"}), 401
+
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict):
+        return jsonify({"message": "Invalid payload"}), 400
+
+    score = payload.get("score")
+    text = payload.get("text")
+
+    if not score or not text or not text.strip():
+        return jsonify({"message": "Score and text are required"}), 400
+
+    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor(dictionary=True)) as cursor:
+                cursor.execute(
+                    """
+                    SELECT user_id 
+                    FROM AuthSessions 
+                    WHERE session_token_hash = %s 
+                      AND expires_at > UTC_TIMESTAMP()
+                    """,
+                    (session_token_hash,)
+                )
+                session_row = cursor.fetchone()
+                if not session_row:
+                    return jsonify({"message": "Authentication required"}), 401
+
+                user_id = session_row["user_id"]
+
+                cursor.execute(
+                    """
+                    UPDATE Reviews 
+                    SET review_score = %s, review_text = %s 
+                    WHERE review_id = %s AND user_id = %s
+                    """,
+                    (score, text.strip(), review_id, user_id)
+                )
+                connection.commit()
+
+                if cursor.rowcount == 0:
+                    return jsonify({"message": "Review not found or unauthorized"}), 404
+
+        return jsonify({"message": "Review updated successfully"})
+    except Exception:
+        current_app.logger.exception("Failed to update review")
+        return jsonify({"error": "Operation unavailable"}), 503
+
+    

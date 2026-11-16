@@ -140,3 +140,27 @@ export async function fetchUserReviewsApi() {
 
   return response.json();
 }
+
+export async function deleteReviewApi(reviewId) {
+  const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete review.");
+  }
+  return response.json();
+}
+
+export async function updateReviewApi(reviewId, score, text) {
+  const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ score, text }),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to update review.");
+  }
+  return response.json();
+}

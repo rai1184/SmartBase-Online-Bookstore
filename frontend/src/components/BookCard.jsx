@@ -1,32 +1,11 @@
-import { useState } from "react";
-
 export default function BookCard({
   book,
   type,
   favorite,
   toggleFavorite,
   reviews = [],
-  addReview,
   onSelect,
-  user,
 }) {
-  const [showReview, setShowReview] = useState(false);
-  const [reviewText, setReviewText] = useState("");
-  const [reviewScore, setReviewScore] = useState("5");
-
-  const submitReview = (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (!reviewText.trim()) return;
-
-    addReview(book.ISBN, Number(reviewScore), reviewText.trim());
-
-    setReviewText("");
-    setReviewScore("5");
-    setShowReview(false);
-  };
-
   const totalReviews = book.ReviewCount ?? reviews.length;
   const ratingDisplay =
     book.Rating != null && book.Rating > 0
@@ -60,7 +39,8 @@ export default function BookCard({
         />
       </div>
       
-      <div className="book-information" onClick={(e) => e.stopPropagation()}>
+      {/* Removed stopPropagation here so clicking text opens the modal */}
+      <div className="book-information">
         <h3>{book.Title}</h3>
         <p className="book-author">by {book.Author}</p>
 
@@ -83,9 +63,6 @@ export default function BookCard({
 
         <div className="review-header">
           <span>{totalReviews} review{totalReviews === 1 ? "" : "s"}</span>
-          <button onClick={() => setShowReview(!showReview)}>
-            {showReview ? "Cancel" : "Write Review"}
-          </button>
         </div>
 
         {reviews.length > 0 && (
@@ -97,33 +74,6 @@ export default function BookCard({
               </div>
             ))}
           </div>
-        )}
-
-        {showReview && (
-          <form className="review-form" onSubmit={submitReview}>
-            {!user && (
-              <p className="warning">Please login before submitting a review.</p>
-            )}
-
-            <select
-              value={reviewScore}
-              onChange={(event) => setReviewScore(event.target.value)}
-            >
-              <option value="5">5 stars</option>
-              <option value="4">4 stars</option>
-              <option value="3">3 stars</option>
-              <option value="2">2 stars</option>
-              <option value="1">1 star</option>
-            </select>
-
-            <textarea
-              placeholder="Write your review..."
-              value={reviewText}
-              onChange={(event) => setReviewText(event.target.value)}
-            />
-
-            <button type="submit">Submit Review</button>
-          </form>
         )}
       </div>
     </article>
