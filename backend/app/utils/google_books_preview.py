@@ -130,6 +130,15 @@ def summarize_book(item):
     }
 
 
+def is_ready_to_seed(item):
+    summary = summarize_book(item)
+    return (
+        summary["isbn"] != "not provided"
+        and summary["price"] != "not provided"
+        and bool(summary["cover_url"])
+    )
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description="Preview Google Books results without writing to the database."
@@ -150,6 +159,14 @@ def main(argv=None):
         action="store_true",
         help="Print Google Books cover URLs for returned books.",
     )
+    parser.add_argument(
+        "--ready-to-seed",
+        action="store_true",
+        help=(
+            "Show only returned books with an ISBN, Google retail price, "
+            "and cover URL."
+        ),
+    )
     args = parser.parse_args(argv)
     if not 1 <= args.max_results <= 10:
         parser.error("--max-results must be between 1 and 10")
@@ -166,6 +183,17 @@ def main(argv=None):
     if not items:
         print("No results were returned.")
         return 0
+
+    if args.ready_to_seed:
+        returned_count = len(items)
+        items = [item for item in items if is_ready_to_seed(item)]
+        print(
+            f"{len(items)} of the {returned_count} returned results have "
+            "an ISBN, price, and cover."
+        )
+        if not items:
+            print("No returned results meet all three requirements.")
+            return 0
 
     for index, item in enumerate(items, start=1):
         summary = summarize_book(item)

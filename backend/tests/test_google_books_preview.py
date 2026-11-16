@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from app.utils.google_books_preview import (
     fetch_books,
+    is_ready_to_seed,
     load_api_key,
     summarize_book,
 )
@@ -79,6 +80,20 @@ class GoogleBooksPreviewTests(unittest.TestCase):
                 fetch_books("subject:Science Fiction", 5, api_key)
 
         self.assertNotIn(api_key, str(raised.exception))
+
+    def test_ready_to_seed_requires_isbn_price_and_cover(self):
+        complete_item = {
+            "volumeInfo": {
+                "industryIdentifiers": [
+                    {"type": "ISBN_13", "identifier": "9780123456786"}
+                ],
+                "imageLinks": {"thumbnail": "https://example.test/cover"},
+            },
+            "saleInfo": {"retailPrice": {"amount": 9.99, "currencyCode": "USD"}},
+        }
+
+        self.assertTrue(is_ready_to_seed(complete_item))
+        self.assertFalse(is_ready_to_seed({"volumeInfo": {}, "saleInfo": {}}))
 
 
 if __name__ == "__main__":

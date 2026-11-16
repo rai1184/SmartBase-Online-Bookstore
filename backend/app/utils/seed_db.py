@@ -129,6 +129,7 @@ def initialize_database():
                 )
 
                 # Seed Books (cover_image may be a local path or external URL)
+                #The images with extrenal URLremain hosted by Google, so loading them requires internet access; they aren’t downloaded into the repo.
                 books_data = [
                     ('978-0441172719', 'Dune', 'Frank Herbert', 'Set on the desert planet Arrakis, this epic follows young Paul Atreides as his family accepts stewardship of the valuable spice resource, leading to betrayal and destiny.', 18.99, '1965-08-01', 10, "/images/bookes/dune.jpg"),
                     ('978-0553293357', 'Foundation', 'Isaac Asimov', 'A visionary mathematician uses psychohistory to predict the collapse of a galactic empire and creates a sanctuary of knowledge to shorten the coming dark age.', 14.99, '1951-05-01', 10, None),
