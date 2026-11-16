@@ -63,6 +63,7 @@ def admin_add_book():
 # Edit book in DB by isbn
 @admin_bp.put("/admin/books/<isbn>")
 def admin_update_book(isbn):
+    # Put form fields into data
     data = request.get_json() or {}
     user_id = data.get("user_id")
 
