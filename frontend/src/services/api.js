@@ -92,6 +92,21 @@ export async function searchBooksApi(params) {
   };
 }
 
+export async function submitReviewApi(isbn, rating, comment) {
+  const response = await fetch(`${API_BASE_URL}/reviews`, {
+    method: "POST",
+    credentials: "include", // Crucial for sending the session cookie!
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ isbn, rating, comment }),
+  });
+  
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to submit review.");
+  }
+  return data;
+}
+
 export async function checkHealthApi() {
   const response = await fetch(`${API_BASE_URL}/health`);
   if (!response.ok) {
@@ -99,4 +114,53 @@ export async function checkHealthApi() {
   }
   const data = await response.json();
   return data.message || "Online";
+}
+
+export async function fetchBookReviewsApi(isbn) {
+  const response = await fetch(`${API_BASE_URL}/books/${isbn}/reviews`);
+  if (!response.ok) {
+    throw new Error("Failed to load reviews for this book.");
+  }
+  return response.json();
+}
+
+/**
+ * Fetch all reviews posted by the currently logged-in user.
+ */
+export async function fetchUserReviewsApi() {
+  const response = await fetch(`${API_BASE_URL}/user/reviews`, {
+    method: "GET",
+    credentials: "include", // Required to send the smartbase_session cookie
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || "Failed to load your reviews.");
+  }
+
+  return response.json();
+}
+
+export async function deleteReviewApi(reviewId) {
+  const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete review.");
+  }
+  return response.json();
+}
+
+export async function updateReviewApi(reviewId, score, text) {
+  const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ score, text }),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to update review.");
+  }
+  return response.json();
 }

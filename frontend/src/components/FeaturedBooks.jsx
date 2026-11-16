@@ -11,42 +11,28 @@ export default function FeaturedBooks({
   addReview,
   user,
   goToSearch,
+  onSelectBook,
 }) {
   return (
     <section className="featured-section">
       <div className="featured-heading">
         <div>
-          <p className="section-label">DISCOVER</p>
+          <p className="section-label">CURATED DISCOVERY</p>
           <h2>Featured Books</h2>
-          <p>
-            Browse a few books from SmartBase or use Smart Search
-            to find something specific.
-          </p>
+          <p>Explore hand-picked selections and top-rated reads across genres.</p>
         </div>
-
-        <button
-          className="browse-button"
-          onClick={goToSearch}
-        >
-          Browse All Books
+        <button className="browse-button" onClick={goToSearch}>
+          Search All Books
         </button>
       </div>
 
       {loading ? (
-        <p className="empty-message" role="status">
-          Loading books...
-        </p>
+        <p className="empty-message" role="status">Loading featured books...</p>
       ) : error ? (
         <div className="empty-message" role="alert">
           <p>{error}</p>
-          <button className="standard-button" onClick={onRetry}>
-            Try again
-          </button>
+          <button className="standard-button" onClick={onRetry}>Try again</button>
         </div>
-      ) : books.length === 0 ? (
-        <p className="empty-message">
-          No books are available yet.
-        </p>
       ) : (
         <div className="book-grid">
           {books.map((book) => (
@@ -56,9 +42,10 @@ export default function FeaturedBooks({
               type="featured"
               favorite={favorites.includes(book.ISBN)}
               toggleFavorite={toggleFavorite}
-              reviews={reviews[book.ISBN] || []}
+              reviews={reviews}
               addReview={addReview}
               user={user}
+              onSelect={() => onSelectBook(book)}
             />
           ))}
         </div>

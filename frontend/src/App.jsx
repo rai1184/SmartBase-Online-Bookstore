@@ -4,9 +4,10 @@ import "./App.css";
 import Navbar from "./components/Navbar";
 import SearchBox from "./components/SearchBox";
 import BookSuggestions from "./components/BookSuggestions";
-import BookCard from "./components/BookCard";
 import FeaturedBooks from "./components/FeaturedBooks";
 import Login from "./components/Login";
+import BookDetailModal from "./components/BookDetailModal";
+import AccountPage from "./components/AccountPage"
 
 import {
   accountSetupApi,
@@ -17,6 +18,7 @@ import {
   loginApi,
   logoutApi,
   searchBooksApi,
+  submitReviewApi
 } from "./services/api";
 
 function App() {
@@ -40,10 +42,7 @@ function App() {
     return stored ? JSON.parse(stored) : [];
   });
 
-  const [reviews, setReviews] = useState(() => {
-    const stored = localStorage.getItem("smartbase-reviews");
-    return stored ? JSON.parse(stored) : {};
-  });
+  const [selectedBook, setSelectedBook] = useState(null);
 
   const loadBooks = useCallback(() => {
     setBooksLoading(true);
@@ -53,20 +52,6 @@ function App() {
       .then(setBooks)
       .catch((error) => setBooksError(error.message))
       .finally(() => setBooksLoading(false));
-  }, []);
-
-  const restoreSession = useCallback(async () => {
-    setAuthLoading(true);
-    setSessionError("");
-    try {
-      setUser(await getCurrentUserApi());
-      setSessionError("");
-    } catch (error) {
-      setUser(null);
-      setSessionError(error.message);
-    } finally {
-      setAuthLoading(false);
-    }
   }, []);
 
   useEffect(() => {
@@ -124,13 +109,11 @@ function App() {
 
   const featuredBooks = books.slice(0, 4);
 
-  // Given query, which is a form, populate exact and alternative matches
-  const handleSearch = async (query) => {
+ const handleSearch = async (query) => {
     setHasSearched(true);
     setPage("search");
 
     try {
-      // Pack all fields and relaxation flags into a URLSearchParams, to be sent to backend
       const params = new URLSearchParams({
         title: query.title || "",
         author: query.author || "",
@@ -138,16 +121,20 @@ function App() {
         max_price: query.maxPrice || "",
         min_rating: query.minRating || "",
         publication_year: query.publicationYear || "",
+        page_count: query.pageCount || "",
+        in_stock: query.inStock || "",
         relax_title: query.relaxTitle,
         relax_author: query.relaxAuthor,
         relax_genre: query.relaxGenre,
         relax_price: query.relaxPrice,
         relax_rating: query.relaxRating,
         relax_year: query.relaxYear,
+        relax_page_count: query.relaxPageCount,
+        relax_in_stock: query.relaxInStock,
       });
 
       const results = await searchBooksApi(params);
-      setExactMatches(results.exact_matches); // set state
+      setExactMatches(results.exact_matches);
       setAlternativeMatches(results.alternative_matches);
     } catch (error) {
       console.error("Search error:", error);
@@ -167,22 +154,19 @@ function App() {
     });
   };
 
-  const addReview = (isbn, score, text) => {
+  const addReview = async (isbn, score, text) => {
     if (!user) {
       setPage("login");
       return;
     }
 
-    setReviews((current) => {
-      const newReview = { name: user.username, score, text };
-      const updated = {
-        ...current,
-        [isbn]: [...(current[isbn] || []), newReview],
-      };
-
-      localStorage.setItem("smartbase-reviews", JSON.stringify(updated));
-      return updated;
-    });
+    try {
+      await submitReviewApi(isbn, score, text);
+      loadBooks();
+    } catch (error) {
+      console.error("Error submitting review:", error);
+      alert(error.message);
+    }
   };
 
   const login = useCallback(async (username, password) => {
@@ -225,8 +209,6 @@ function App() {
     }
   }, []);
 
-  const favoriteBooks = books.filter((book) => favorites.includes(book.ISBN));
-
   return (
     <div className="app-container">
       <Navbar
@@ -251,10 +233,11 @@ function App() {
             onRetry={loadBooks}
             favorites={favorites}
             toggleFavorite={toggleFavorite}
-            reviews={reviews}
+            reviews={[]}
             addReview={addReview}
             user={user}
             goToSearch={() => setPage("search")}
+            onSelectBook={setSelectedBook}
           />
         </main>
       )}
@@ -283,53 +266,12 @@ function App() {
                 alternativeMatches={alternativeMatches}
                 favorites={favorites}
                 toggleFavorite={toggleFavorite}
-                reviews={reviews}
+                reviews={[]}
                 addReview={addReview}
                 user={user}
+                onSelectBook={setSelectedBook}
               />
             </>
-          )}
-        </main>
-      )}
-
-      {page === "favorites" && (
-        <main className="page">
-          <div className="page-heading">
-            <p className="section-label">YOUR LIBRARY</p>
-            <h1>Favorite Books</h1>
-            <p>Books you save will appear here.</p>
-          </div>
-
-          {booksLoading ? (
-            <p className="empty-message" role="status">Loading books...</p>
-          ) : booksError ? (
-            <div className="empty-message" role="alert">
-              <p>{booksError}</p>
-              <button className="standard-button" onClick={loadBooks}>Try again</button>
-            </div>
-          ) : favoriteBooks.length === 0 ? (
-            <div className="empty-message">
-              <h3>No favorites yet.</h3>
-              <p>Search or browse books and click the heart to save them.</p>
-              <button className="standard-button" onClick={() => setPage("search")}>
-                Browse Books
-              </button>
-            </div>
-          ) : (
-            <div className="book-grid">
-              {favoriteBooks.map((book) => (
-                <BookCard
-                  key={book.ISBN}
-                  book={book}
-                  type="featured"
-                  favorite={true}
-                  toggleFavorite={toggleFavorite}
-                  reviews={reviews[book.ISBN] || []}
-                  addReview={addReview}
-                  user={user}
-                />
-              ))}
-            </div>
           )}
         </main>
       )}
@@ -342,8 +284,26 @@ function App() {
           completeAccountSetup={completeAccountSetup}
           logout={logout}
           sessionError={sessionError}
-          retrySession={restoreSession}
           authLoading={authLoading}
+        />
+      )}
+
+      {page === "account" && user && (
+        <AccountPage 
+          user={user} 
+          favorites={favorites} 
+          toggleFavorite={toggleFavorite} 
+          onSelectBook={setSelectedBook} 
+        />
+      )}
+
+      {/* Root-Level Full-Screen Two-Column Modal Overlay */}
+      {selectedBook && (
+        <BookDetailModal
+          book={selectedBook}
+          onClose={() => setSelectedBook(null)}
+          addReview={addReview}
+          user={user}
         />
       )}
 

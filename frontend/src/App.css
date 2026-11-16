@@ -919,3 +919,93 @@ footer p {
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Clickable Book Cards */
+.book-card.clickable {
+  cursor: pointer;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 2rem;
+}
+
+.modal-container {
+  background: #ffffff;
+  width: 100%;
+  max-width: 1000px;
+  height: 85vh;
+  border-radius: 12px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+}
+
+.modal-grid-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height: 100%;
+  overflow: hidden;
+}
+
+.modal-left-pane {
+  padding: 2rem;
+  overflow-y: auto;
+  border-right: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.modal-right-pane {
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.modal-reviews-scroll {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding-right: 0.5rem;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.book-menu-modal {
+  position: fixed;        /* Breaks it out of the card flow */
+  inset: 0;               /* Covers top, bottom, left, right of the whole screen */
+  background: rgba(0, 0, 0, 0.75); /* Dark background overlay */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;          /* Ensures it sits on top of everything */
+}
+
+.book-menu-modal .modal-content {
+  background: #ffffff;
+  width: 90%;
+  max-width: 900px;
+  height: 80vh;
+  border-radius: 12px;
+  padding: 2rem;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}

@@ -1,6 +1,19 @@
 # Unpack SQL row and pack it into a dictionary
 def format_book(row):
-    isbn, title, author, about, msrp, publication_date, genre_name, avg_rating, review_count, cover_image = row
+    (
+        isbn,
+        title,
+        author,
+        about,
+        msrp,
+        publication_date,
+        genre_name,
+        avg_rating,
+        review_count,
+        cover_image,
+        in_stock,
+        page_count,
+    ) = row
     
     return {
         "isbn": isbn,
@@ -12,5 +25,7 @@ def format_book(row):
         "genre": genre_name,
         "avg_rating": float(avg_rating) if avg_rating is not None else 0.0,
         "review_count": int(review_count) if review_count is not None else 0,
-        "cover_image": cover_image
+        "cover_image": cover_image,
+        "in_stock": int(in_stock) if in_stock is not None else 0,
+        "page_count": int(page_count) if page_count is not None else 0,
     }

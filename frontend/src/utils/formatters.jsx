@@ -1,4 +1,3 @@
-// Turn DB result in readable object 
 // Turn DB result into a readable frontend object
 export const formatBook = (book) => ({
   ISBN: book.isbn,
@@ -8,7 +7,8 @@ export const formatBook = (book) => ({
   MSRP: Number(book.msrp),
   Rating: book.avg_rating ?? null,
   ReviewCount: book.review_count ?? 0,
-  Pages: null,
+  Pages: book.page_count ?? null,
+  InStock: book.in_stock ?? 0,
   PublicationYear: book.publication_date
     ? Number(book.publication_date.slice(0, 4))
     : null,

@@ -1,37 +1,11 @@
-import { useState } from "react";
-
 export default function BookCard({
   book,
   type,
   favorite,
   toggleFavorite,
   reviews = [],
-  addReview,
-  user,
+  onSelect,
 }) {
-  const [showReview, setShowReview] = useState(false);
-  const [reviewText, setReviewText] = useState("");
-  const [reviewScore, setReviewScore] = useState("5");
-
-  const submitReview = (event) => {
-    event.preventDefault();
-
-    if (!reviewText.trim()) {
-      return;
-    }
-
-    addReview(
-      book.ISBN,
-      Number(reviewScore),
-      reviewText.trim()
-    );
-
-    setReviewText("");
-    setReviewScore("5");
-    setShowReview(false);
-  };
-
-  // Determine review count and rating formatted string
   const totalReviews = book.ReviewCount ?? reviews.length;
   const ratingDisplay =
     book.Rating != null && book.Rating > 0
@@ -39,28 +13,18 @@ export default function BookCard({
       : "Not rated";
 
   return (
-    <article className="book-card">
-      <div className="card-top">
+    <article className="book-card clickable" onClick={onSelect}>
+      <div className="card-top" onClick={(e) => e.stopPropagation()}>
         <div>
           {type === "exact" && (
-            <span className="exact-badge">
-              Exact Match
-            </span>
+            <span className="exact-badge">Exact Match</span>
           )}
         </div>
 
         <button
-          className={
-            favorite
-              ? "heart favorite"
-              : "heart"
-          }
+          className={favorite ? "heart favorite" : "heart"}
           onClick={() => toggleFavorite(book.ISBN)}
-          title={
-            favorite
-              ? "Remove from favorites"
-              : "Add to favorites"
-          }
+          title={favorite ? "Remove from favorites" : "Add to favorites"}
         >
           {favorite ? "♥" : "♡"}
         </button>
@@ -69,114 +33,55 @@ export default function BookCard({
       {/* Book Cover Image */}
       <div className="book-cover-container">
         <img 
-          src={book.CoverImage || "/images/books/default-cover.jpg"} 
-          alt={""} 
+          src={book.CoverImage ? `/images/books/${book.CoverImage}` : "/images/books/default-cover.jpg"} 
           className="book-cover-image"
+          alt={book.Title}
         />
       </div>
       
       <div className="book-information">
         <h3>{book.Title}</h3>
+        <p className="book-author">by {book.Author}</p>
 
-        <p className="book-author">
-          by {book.Author}
-        </p>
+        {/* Stock status moved right below author for high visibility */}
+        {book.InStock !== undefined && (
+          <p style={{ margin: "4px 0 10px 0", fontSize: "0.85rem" }}>
+            <span className={book.InStock === 0 ? "out-of-stock" : "in-stock"}>
+              {book.InStock > 0 ? `● ${book.InStock} in stock` : "✕ Out of stock"}
+            </span>
+          </p>
+        )}
 
         {book.About && (
-          <p className="book-description">
-            {book.About}
-          </p>
+          <p className="book-description">{book.About}</p>
         )}
 
         <div className="book-tags">
           <span>{book.Genre}</span>
           {book.Pages && <span>{book.Pages} pages</span>}
-          {book.PublicationYear && (
-            <span>{book.PublicationYear}</span>
-          )}
+          {book.PublicationYear && <span>{book.PublicationYear}</span>}
         </div>
 
         <div className="book-price-row">
-          <strong>
-            ${book.MSRP ? book.MSRP.toFixed(2) : "0.00"}
-          </strong>
-
-          <span>
-            {ratingDisplay}
-          </span>
+          <strong>${book.MSRP ? book.MSRP.toFixed(2) : "0.00"}</strong>
+          <span>{ratingDisplay}</span>
         </div>
 
-        <p className="isbn">
-          ISBN: {book.ISBN}
-        </p>
+        <p className="isbn">ISBN: {book.ISBN}</p>
 
         <div className="review-header">
-          <span>
-            {totalReviews} review{totalReviews === 1 ? "" : "s"}
-          </span>
-
-          <button
-            onClick={() =>
-              setShowReview(!showReview)
-            }
-          >
-            {showReview ? "Cancel" : "Write Review"}
-          </button>
+          <span>{totalReviews} review{totalReviews === 1 ? "" : "s"}</span>
         </div>
 
         {reviews.length > 0 && (
           <div className="review-list">
             {reviews.slice(-2).map((review, index) => (
-              <div
-                className="review"
-                key={`${review.name}-${index}`}
-              >
-                <strong>
-                  {review.name} · ★ {review.score}
-                </strong>
-
+              <div className="review" key={`${review.name}-${index}`}>
+                <strong>{review.name} · ★ {review.score}</strong>
                 <p>{review.text}</p>
               </div>
             ))}
           </div>
-        )}
-
-        {showReview && (
-          <form
-            className="review-form"
-            onSubmit={submitReview}
-          >
-            {!user && (
-              <p className="warning">
-                Please login before submitting a review.
-              </p>
-            )}
-
-            <select
-              value={reviewScore}
-              onChange={(event) =>
-                setReviewScore(event.target.value)
-              }
-            >
-              <option value="5">5 stars</option>
-              <option value="4">4 stars</option>
-              <option value="3">3 stars</option>
-              <option value="2">2 stars</option>
-              <option value="1">1 star</option>
-            </select>
-
-            <textarea
-              placeholder="Write your review..."
-              value={reviewText}
-              onChange={(event) =>
-                setReviewText(event.target.value)
-              }
-            />
-
-            <button type="submit">
-              Submit Review
-            </button>
-          </form>
         )}
       </div>
     </article>
