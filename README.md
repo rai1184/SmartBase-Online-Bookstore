@@ -49,9 +49,7 @@ devup
 This creates the backend virtual environment if needed, installs missing
 backend and frontend packages, and starts Flask and Vite in the same Compose
 container that publishes their ports. Keep the terminal running while using
-the app. On an empty MySQL database, `devup` loads the schema and sample data
-from `init.sql`; it does not re-import seed data into an existing database.
-The first run may take a few minutes while dependencies are installed.
+the app. The first run may take a few minutes while dependencies are installed.
 
 When Flask and Vite have started, open:
 
@@ -61,7 +59,9 @@ When Flask and Vite have started, open:
 
 Compose waits for MySQL to pass its health check before starting the app
 container. The database check should then return the database status and book
-count.
+count. Flask initializes the schema and seed data at startup. New seed books
+are inserted into an existing database by ISBN, and missing cover images for
+seeded books are filled without replacing existing covers.
 
 Press `Ctrl+C` in the terminal to stop Flask and Vite; MySQL remains available
 while the Dev Container is open. Closing the Dev Container stops its Compose

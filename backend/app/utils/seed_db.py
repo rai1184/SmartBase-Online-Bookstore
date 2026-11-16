@@ -128,13 +128,16 @@ def initialize_database():
                     genres_data,
                 )
 
-                # Seed Books (with cover_image set to None or a filename)
+                # Seed Books (cover_image may be a local path or external URL)
                 books_data = [
                     ('978-0441172719', 'Dune', 'Frank Herbert', 'Set on the desert planet Arrakis, this epic follows young Paul Atreides as his family accepts stewardship of the valuable spice resource, leading to betrayal and destiny.', 18.99, '1965-08-01', 10, "/images/bookes/dune.jpg"),
                     ('978-0553293357', 'Foundation', 'Isaac Asimov', 'A visionary mathematician uses psychohistory to predict the collapse of a galactic empire and creates a sanctuary of knowledge to shorten the coming dark age.', 14.99, '1951-05-01', 10, None),
                     ('978-0385531139', 'The Martian', 'Andy Weir', 'An astronaut is accidentally stranded alone on Mars after a fierce dust storm and must use his ingenuity and scientific wit to survive.', 16.00, '2014-02-11', 10, None),
                     ('978-0441569595', 'Neuromancer', 'William Gibson', 'A washed-up computer hacker is hired by a mysterious employer for one last dangerous run into cyberspace, shaping cyberpunk culture.', 15.50, '1984-07-01', 10, None),
                     ('978-0553573404', 'Snow Crash', 'Neal Stephenson', 'In a futuristic corporate-franchised America, a hacker and pizza delivery driver investigates a computer virus that affects human brains.', 17.25, '1992-06-01', 10, None),
+                    ('978-1429959629', 'The Light of Other Days', 'Arthur C. Clarke, Stephen Baxter', 'Quantum wormhole technology lets people observe distant places and moments, transforming privacy and society.', 19.99, '2010-01-11', 10, "https://books.google.com/books/content?id=3XunMr9D2k4C&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"),
+                    ('978-0795325397', 'A Fall of Moondust', 'Arthur C. Clarke', 'After a lunar tour boat becomes trapped beneath the Moon\'s surface, its passengers must find a way to survive and be rescued.', 9.99, '2012-11-30', 10, "https://books.google.com/books/content?id=qckpAAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"),
+                    ('978-0795324970', 'Childhood\'s End', 'Arthur C. Clarke', 'Alien visitors bring peace to Earth, but humanity\'s future takes an unsettling turn.', 9.99, '2012-11-30', 10, "https://books.google.com/books/content?id=OcspAAAAQBAJ&printsec=frontcover&img=1&zoom=1&edge=curl&source=gbs_api"),
                     ('978-0261102217', 'The Hobbit', 'J.R.R. Tolkien', 'A comfort-loving hobbit gets swept into an unexpected quest with a wizard and a band of dwarves to reclaim stolen treasure from a dragon.', 14.99, '1937-09-21', 11, None),
                     ('978-0756404741', 'The Name of the Wind', 'Patrick Rothfuss', 'A notorious wizard, musician, and thief recounts the legendary hardships and triumphs of his youth in his own quiet tavern voice.', 18.00, '2007-03-27', 11, None),
                     ('978-0765350381', 'Mistborn: The Final Empire', 'Brandon Sanderson', 'A crew of talented thieves plans an elaborate heist to overthrow an immortal ruler who has oppressed the world for a millennium.', 16.50, '2006-07-17', 11, None),
@@ -167,6 +170,20 @@ def initialize_database():
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                     """,
                     books_data,
+                )
+
+                cover_updates = [
+                    (cover_image, isbn)
+                    for isbn, _, _, _, _, _, _, cover_image in books_data
+                    if cover_image
+                ]
+                cursor.executemany(
+                    """
+                    UPDATE Books
+                    SET cover_image = %s
+                    WHERE isbn = %s AND (cover_image IS NULL OR cover_image = '')
+                    """,
+                    cover_updates,
                 )
 
                 connection.commit()
