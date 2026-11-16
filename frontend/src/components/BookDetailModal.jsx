@@ -60,7 +60,13 @@ export default function BookDetailModal({ book, onClose, addReview, user }) {
           <div className="modal-left-pane">
             <div className="book-cover-container" style={{ height: "220px", marginBottom: "1.5rem" }}>
               <img 
-                src={book.CoverImage ? `/images/books/${book.CoverImage}` : "/images/books/default-cover.jpg"} 
+                src={
+                  !book.CoverImage
+                    ? "/images/books/default-cover.jpg"
+                    : book.CoverImage.startsWith("http://") || book.CoverImage.startsWith("https://")
+                    ? book.CoverImage
+                    : `/images/books/${book.CoverImage}`
+                } 
                 className="book-cover-image"
                 alt={book.Title}
               />
