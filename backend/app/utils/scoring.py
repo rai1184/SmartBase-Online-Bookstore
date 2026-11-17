@@ -1,4 +1,3 @@
-# backend/app/utils/scoring.py
 from contextlib import closing
 from app.database.connection import get_db_connection
 
@@ -51,10 +50,6 @@ class GenreTAH:
         distance = 0
         lca_found = False
 
-        # Calculate distance between the two genres
-        # Check each ancestor of A, starting at A
-        # If it is in the ancestor list of B, that is the lowest ancestor
-        # The distance between them is how many ancestors away from A the match was, plus how many ancestors away from B the match was
         for i, a in enumerate(chain_a):
             if a in chain_b:
                 j = chain_b.index(a)
@@ -65,7 +60,6 @@ class GenreTAH:
         if not lca_found:
             return 1.0
 
-        # Normalize distance (assuming a max tree depth hop of 4)
         return min(distance / 4.0, 1.0)
 
 
@@ -81,6 +75,7 @@ def score_alternative(book, target_params, relaxation_flags, genre_tah):
     relax_year = relaxation_flags.get("relax_year", False)
     relax_rating = relaxation_flags.get("relax_rating", False)  
     relax_genre = relaxation_flags.get("relax_genre", False)    
+    relax_in_stock = relaxation_flags.get("relax_in_stock", False)
 
     # Price distance
     if relax_price and max_price:
@@ -111,11 +106,9 @@ def score_alternative(book, target_params, relaxation_flags, genre_tah):
             
             if actual_r is not None:
                 if actual_r < target_r:
-                    # Penalize the gap between actual rating and target minimum
                     rating_gap = target_r - actual_r
-                    distance += (rating_gap / 5.0) * 0.25  # Normalized across 5-star scale
+                    distance += (rating_gap / 5.0) * 0.25
             else:
-                # Unrated books get a minor penalty when rating constraint is relaxed
                 distance += 0.2 * 0.25
         except ValueError:
             pass
@@ -125,6 +118,15 @@ def score_alternative(book, target_params, relaxation_flags, genre_tah):
         actual_genre = book["genre"]
         genre_dist = genre_tah.calculate_distance(target_genre, actual_genre)
         distance += genre_dist * 0.25
+
+    # Out-of-stock distance penalty when stock constraint is relaxed
+    if relax_in_stock:
+        try:
+            actual_stock = book.get("in_stock", 0)
+            if actual_stock is not None and actual_stock <= 0:
+                distance += 0.2 * 0.25
+        except (ValueError, TypeError):
+            pass
     
     return distance
 

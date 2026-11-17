@@ -1,6 +1,7 @@
 from contextlib import closing
 
 import mysql.connector
+import hashlib
 from flask import Blueprint, current_app, jsonify, request
 from app.utils.queries import build_alternative_query, build_exact_query, build_insert_review_query
 from app.utils.scoring import rank_alternatives
@@ -9,6 +10,35 @@ from app.utils.format import format_book
 from app.database.connection import get_db_connection
 
 api_v1 = Blueprint("api_v1", __name__)
+
+
+# Reusable auth helper
+def get_current_user_id():
+    """Validates the session cookie and returns the user_id if valid, otherwise None."""
+    session_token = request.cookies.get("smartbase_session")
+    if not session_token:
+        return None
+
+    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
+    try:
+        with closing(get_db_connection()) as connection:
+            with closing(connection.cursor(dictionary=True)) as cursor:
+                cursor.execute(
+                    """
+                    SELECT user_id 
+                    FROM AuthSessions 
+                    WHERE session_token_hash = %s 
+                      AND expires_at > UTC_TIMESTAMP()
+                    """,
+                    (session_token_hash,)
+                )
+                session_row = cursor.fetchone()
+                if session_row:
+                    return session_row["user_id"]
+    except Exception:
+        current_app.logger.exception("Session validation failed")
+    
+    return None
 
 
 @api_v1.get("/health")
@@ -81,6 +111,7 @@ def database_health_check():
     )
 
 
+# Book search endpoint, takes all parameters and returns exact and alternate matches
 @api_v1.get("/books/search")
 def search_books():
     title = request.args.get("title", "").strip()
@@ -101,16 +132,15 @@ def search_books():
     relax_in_stock = request.args.get("relax_in_stock", "").strip() == "true"
     relax_page_count = request.args.get("relax_page_count", "").strip() == "true"
 
-    # Pass new fields into query builders
+    # Pass relax_in_stock into build_exact_query
     exact_query, exact_params = build_exact_query(
-        title, author, genre, max_price, min_rating, publication_year, page_count, in_stock
+        title, author, genre, max_price, min_rating, publication_year, page_count, in_stock, relax_in_stock
     )
     alternative_query, alternative_params = build_alternative_query(
         title, author, genre, max_price, min_rating, publication_year, page_count,
         relax_title, relax_author, relax_genre, relax_price, relax_rating, relax_year, relax_page_count, relax_in_stock
     )
 
-    # Run the created queries
     try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor()) as cursor:
@@ -128,7 +158,6 @@ def search_books():
 
     exact_isbns = {book["isbn"] for book in formatted_exact}
 
-    # Target parameters for the alternative search
     target_params = {
         "max_price": max_price,
         "publication_year": publication_year,
@@ -136,15 +165,14 @@ def search_books():
         "genre": genre
     }
 
-    # Whether or not we are relaxing these in particular plays into the alternate ranking
     relaxation_flags = {
         "relax_price": relax_price,
         "relax_year": relax_year,
         "relax_rating": relax_rating,
-        "relax_genre": relax_genre
+        "relax_genre": relax_genre,
+        "relax_in_stock": relax_in_stock 
     }
 
-    # Rank alternatives
     scored_alternatives = rank_alternatives(
         formatted_alternatives, exact_isbns, target_params, relaxation_flags
     )
@@ -154,10 +182,14 @@ def search_books():
         "alternative_matches": scored_alternatives, 
     })
 
-import hashlib
 
+# Post review of book
 @api_v1.post("/reviews")
 def submit_review():
+    user_id = get_current_user_id()
+    if not user_id:
+        return jsonify({"error": "Authentication required."}), 401
+
     payload = request.get_json(silent=True)
     if not isinstance(payload, dict):
         return jsonify({"error": "Invalid request body."}), 400
@@ -169,34 +201,9 @@ def submit_review():
     if not isbn or rating is None:
         return jsonify({"error": "ISBN and rating are required fields."}), 400
 
-    session_token = request.cookies.get("smartbase_session")
-    if not session_token:
-        return jsonify({"error": "Authentication required."}), 401
-
-    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
-
     try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor()) as cursor:
-                # 1. Verify session token against AuthSessions and get user_id
-                cursor.execute(
-                    """
-                    SELECT `User`.user_id
-                    FROM AuthSessions
-                    JOIN `User` ON `User`.user_id = AuthSessions.user_id
-                    WHERE AuthSessions.session_token_hash = %s
-                      AND AuthSessions.expires_at > UTC_TIMESTAMP()
-                    """,
-                    (session_token_hash,),
-                )
-                user_row = cursor.fetchone()
-
-                if not user_row:
-                    return jsonify({"error": "Invalid or expired session."}), 401
-
-                user_id = user_row[0]
-
-                # 2. Insert the review
                 cursor.execute(
                     """
                     INSERT INTO Reviews (isbn, user_id, review_score, review_text)
@@ -216,12 +223,12 @@ def submit_review():
         }), 201
 
     except mysql.connector.IntegrityError:
-        # Triggered if the user has already reviewed this specific book
         return jsonify({"error": "You have already submitted a review for this book."}), 409
 
-    except Exception as e:
+    except Exception:
         current_app.logger.exception("Review submission failed")
         return jsonify({"error": "Review submission unavailable"}), 503
+
 
 # Get all reviews for a book
 @api_v1.get("/books/<isbn>/reviews")
@@ -246,7 +253,6 @@ def get_book_reviews(isbn):
                 )
                 reviews = cursor.fetchall()
         
-        # Map using the SQL aliases (name, score, text) and iterate over `reviews`
         formatted_reviews = [
             {
                 "name": row["name"],
@@ -260,35 +266,17 @@ def get_book_reviews(isbn):
         current_app.logger.exception("Failed to fetch book reviews")
         return jsonify({"error": "Reviews unavailable"}), 503
 
+
 # Get all reviews for the currently logged-in user
 @api_v1.get("/user/reviews")
 def get_user_reviews():
-    session_token = request.cookies.get("smartbase_session")
-    if not session_token:
+    user_id = get_current_user_id()
+    if not user_id:
         return jsonify({"message": "Authentication required"}), 401
 
-    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
     try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor(dictionary=True)) as cursor:
-                # Resolve user_id from the active session token hash
-                cursor.execute(
-                    """
-                    SELECT user_id 
-                    FROM AuthSessions 
-                    WHERE session_token_hash = %s 
-                      AND expires_at > UTC_TIMESTAMP()
-                    """,
-                    (session_token_hash,)
-                )
-                session_row = cursor.fetchone()
-                
-                if not session_row:
-                    return jsonify({"message": "Authentication required"}), 401
-                
-                user_id = session_row["user_id"]
-
-                # Fetch all reviews written by this user, joined with book info
                 cursor.execute(
                     """
                     SELECT 
@@ -311,34 +299,17 @@ def get_user_reviews():
         current_app.logger.exception("Failed to fetch user reviews")
         return jsonify({"error": "Reviews unavailable"}), 503
 
-    # Delete a review by ID
+
+# Delete a review by ID
 @api_v1.delete("/reviews/<int:review_id>")
 def delete_review(review_id):
-    session_token = request.cookies.get("smartbase_session")
-    if not session_token:
+    user_id = get_current_user_id()
+    if not user_id:
         return jsonify({"message": "Authentication required"}), 401
 
-    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
     try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor(dictionary=True)) as cursor:
-                # Verify session and get user_id
-                cursor.execute(
-                    """
-                    SELECT user_id 
-                    FROM AuthSessions 
-                    WHERE session_token_hash = %s 
-                      AND expires_at > UTC_TIMESTAMP()
-                    """,
-                    (session_token_hash,)
-                )
-                session_row = cursor.fetchone()
-                if not session_row:
-                    return jsonify({"message": "Authentication required"}), 401
-
-                user_id = session_row["user_id"]
-
-                # Delete only if the review belongs to this user
                 cursor.execute(
                     "DELETE FROM Reviews WHERE review_id = %s AND user_id = %s",
                     (review_id, user_id)
@@ -357,8 +328,8 @@ def delete_review(review_id):
 # Update a review by ID
 @api_v1.put("/reviews/<int:review_id>")
 def update_review(review_id):
-    session_token = request.cookies.get("smartbase_session")
-    if not session_token:
+    user_id = get_current_user_id()
+    if not user_id:
         return jsonify({"message": "Authentication required"}), 401
 
     payload = request.get_json(silent=True)
@@ -371,25 +342,9 @@ def update_review(review_id):
     if not score or not text or not text.strip():
         return jsonify({"message": "Score and text are required"}), 400
 
-    session_token_hash = hashlib.sha256(session_token.encode("utf-8")).hexdigest()
     try:
         with closing(get_db_connection()) as connection:
             with closing(connection.cursor(dictionary=True)) as cursor:
-                cursor.execute(
-                    """
-                    SELECT user_id 
-                    FROM AuthSessions 
-                    WHERE session_token_hash = %s 
-                      AND expires_at > UTC_TIMESTAMP()
-                    """,
-                    (session_token_hash,)
-                )
-                session_row = cursor.fetchone()
-                if not session_row:
-                    return jsonify({"message": "Authentication required"}), 401
-
-                user_id = session_row["user_id"]
-
                 cursor.execute(
                     """
                     UPDATE Reviews 
@@ -407,5 +362,3 @@ def update_review(review_id):
     except Exception:
         current_app.logger.exception("Failed to update review")
         return jsonify({"error": "Operation unavailable"}), 503
-
-    
