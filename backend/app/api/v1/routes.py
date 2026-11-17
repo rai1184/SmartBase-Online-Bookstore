@@ -132,8 +132,9 @@ def search_books():
     relax_in_stock = request.args.get("relax_in_stock", "").strip() == "true"
     relax_page_count = request.args.get("relax_page_count", "").strip() == "true"
 
+    # Pass relax_in_stock into build_exact_query
     exact_query, exact_params = build_exact_query(
-        title, author, genre, max_price, min_rating, publication_year, page_count, in_stock
+        title, author, genre, max_price, min_rating, publication_year, page_count, in_stock, relax_in_stock
     )
     alternative_query, alternative_params = build_alternative_query(
         title, author, genre, max_price, min_rating, publication_year, page_count,
@@ -168,7 +169,8 @@ def search_books():
         "relax_price": relax_price,
         "relax_year": relax_year,
         "relax_rating": relax_rating,
-        "relax_genre": relax_genre
+        "relax_genre": relax_genre,
+        "relax_in_stock": relax_in_stock 
     }
 
     scored_alternatives = rank_alternatives(

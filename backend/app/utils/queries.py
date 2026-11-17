@@ -1,4 +1,4 @@
-def build_exact_query(title, author, genre, max_price, min_rating, publication_year, page_count="", in_stock=""):
+def build_exact_query(title, author, genre, max_price, min_rating, publication_year, page_count="", in_stock="", relax_in_stock=False):
     base_select = """
     SELECT
             Books.isbn,
@@ -21,8 +21,9 @@ def build_exact_query(title, author, genre, max_price, min_rating, publication_y
     exact_query = base_select + " WHERE 1=1"
     exact_params = []
 
-    # Exclude books with 0 stock unless overridden
-    exact_query += " AND Books.in_stock > 0"
+    # Exclude books with 0 stock unless relax_in_stock is true
+    if not relax_in_stock:
+        exact_query += " AND Books.in_stock > 0"
 
     if title:
         exact_query += " AND Books.title LIKE %s"
@@ -47,7 +48,6 @@ def build_exact_query(title, author, genre, max_price, min_rating, publication_y
             pass
     if page_count:
         try:
-            # Looking for books with page count under or equal to specified number
             exact_query += " AND Books.page_count <= %s"
             exact_params.append(int(page_count))
         except ValueError:
